@@ -26,9 +26,9 @@ import (
 type Config struct {
 	// MetaHeaders stores HTTP headers with metadata about the image
 	MetaHeaders map[string][]string
-	// AuthConfig holds authentication credentials for authenticating with
-	// the registry.
-	AuthConfig *types.AuthConfig
+	// AuthConfigs holds authentication credentials for authenticating with
+	// the registries.
+	AuthConfigs map[string]types.AuthConfig
 	// ProgressOutput is the interface for showing the status of the pull
 	// operation.
 	ProgressOutput progress.Output
@@ -74,6 +74,8 @@ type ImagePushConfig struct {
 	TrustKey libtrust.PrivateKey
 	// UploadManager dispatches uploads.
 	UploadManager *xfer.LayerUploadManager
+	// SkipSchemaV2 skips pushing manifests schema 2 but only push schema 1
+	SkipSchemaV2 bool
 }
 
 // ImageConfigStore handles storing and getting image configurations

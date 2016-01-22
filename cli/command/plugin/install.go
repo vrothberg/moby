@@ -134,14 +134,16 @@ func buildPullConfig(ctx context.Context, dockerCli *command.DockerCli, opts plu
 		remote = trusted.String()
 	}
 
-	authConfig := command.ResolveAuthConfig(ctx, dockerCli, index)
-
-	encodedAuth, err := command.EncodeAuthToBase64(authConfig)
+	dockerRef, err := reference.ParseNamed(ref.Name())
+	if err != nil {
+		return err
+	}
+	encodedAuth, err := command.GetEncodedAuth(dockerCli, dockerRef)
 	if err != nil {
 		return types.PluginInstallOptions{}, err
 	}
 
-	registryAuthFunc := command.RegistryAuthenticationPrivilegedFunc(dockerCli, repoInfoIndex, cmdName)
+	registryAuthFunc := command.RegistryAuthenticationPrivilegedFunc(dockerCli, repoInfoIndex, cmdName, reference.IsReferenceFullyQualified(dockerRef))
 
 	options := types.PluginInstallOptions{
 		RegistryAuth:          encodedAuth,
