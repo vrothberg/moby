@@ -54,6 +54,7 @@ func (daemon *Daemon) PushImage(ctx context.Context, image, tag string, metaHead
 		LayerStore:      distribution.NewLayerProviderFromStore(daemon.layerStore),
 		TrustKey:        daemon.trustKey,
 		UploadManager:   daemon.uploadManager,
+		SkipSchemaV2:    daemon.configStore.SkipSchemaV2Push,
 	}
 
 	err = distribution.Push(ctx, ref, imagePushConfig)
