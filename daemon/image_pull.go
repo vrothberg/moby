@@ -92,6 +92,7 @@ func (daemon *Daemon) pullImageWithReference(ctx context.Context, ref reference.
 		},
 		DownloadManager: daemon.downloadManager,
 		Schema2Types:    distribution.ImageTypes,
+		SignatureCheck:  daemon.configStore.SigCheck,
 	}
 
 	err := distribution.Pull(ctx, ref, imagePullConfig)
