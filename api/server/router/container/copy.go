@@ -115,5 +115,7 @@ func (s *containerRouter) putContainersArchive(ctx context.Context, w http.Respo
 	}
 
 	noOverwriteDirNonDir := httputils.BoolValue(r, "noOverwriteDirNonDir")
-	return s.backend.ContainerExtractToDir(v.Name, v.Path, noOverwriteDirNonDir, r.Body)
+	copyUIDGID := httputils.BoolValue(r, "copyUIDGID")
+
+	return s.backend.ContainerExtractToDir(v.Name, v.Path, copyUIDGID, noOverwriteDirNonDir, r.Body)
 }
