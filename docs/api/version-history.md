@@ -83,6 +83,8 @@ keywords: "API, Docker, rcli, REST, documentation"
 * `DELETE /secrets/{id}` removes the secret `id`.
 * `GET /secrets/{id}` returns information on the secret `id`.
 * `POST /secrets/{id}/update` updates the secret `id`.
+* `POST /containers/create` added 2 built-in log-opts that work on all logging drivers,
+`mode` (`blocking`|`non-blocking`), and `max-buffer-size` (e.g. `2m`) which enables a non-blocking log buffer.
 
 ## v1.24 API changes
 
