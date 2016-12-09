@@ -60,6 +60,8 @@ type ImagePullConfig struct {
 	Schema2Types []string
 	// SignatureCheck controls whether to check image's signatures or not
 	SignatureCheck bool
+	// V2Only controls whether access to V1 registries is allowed
+	V2Only bool
 }
 
 // ImagePushConfig stores push configuration.
