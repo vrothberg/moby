@@ -28,6 +28,7 @@ dockerd - Enable daemon mode
 [**--dns**[=*[]*]]
 [**--dns-opt**[=*[]*]]
 [**--dns-search**[=*[]*]]
+[**--enable-secrets**[=*true*]]
 [**--exec-opt**[=*[]*]]
 [**--exec-root**[=*/var/run/docker*]]
 [**--experimental**[=*false*]]
@@ -186,6 +187,9 @@ $ sudo dockerd --add-runtime runc=runc --add-runtime custom=/usr/local/bin/my-ru
 
 **--dns-search**=[]
   DNS search domains to use.
+
+**--enable-secrets**=*true*|*false*
+  Allow subscription-manager inside the containers to use subscriptions available on the host. Default is true.
 
 **--exec-opt**=[]
   Set runtime execution options. See RUNTIME EXECUTION OPTIONS.
