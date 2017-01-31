@@ -524,3 +524,10 @@ func (s *DockerRegistriesSuite) TestPullNeedsAuth(c *check.C) {
 		c.Fatalf("Wanted %s in output, got %s", repo, out)
 	}
 }
+
+// Regression test for https://github.com/docker/docker/issues/28892
+func (s *DockerSuite) TestPullWindowsImageFailsOnLinux(c *check.C) {
+	testRequires(c, DaemonIsLinux, Network)
+	_, _, err := dockerCmdWithError("pull", "microsoft/nanoserver")
+	c.Assert(err.Error(), checker.Contains, "cannot be used on this platform")
+}
