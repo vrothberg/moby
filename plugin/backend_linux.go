@@ -251,10 +251,20 @@ func (pm *Manager) Upgrade(ctx context.Context, ref reference.Named, name string
 		blobStore: pm.blobStore,
 	}
 
+	repoInfo, err := registry.ParseRepositoryInfo(ref)
+	if err != nil {
+		return err
+	}
+	auths := make(map[string]types.AuthConfig)
+	authConfigKey := registry.GetAuthConfigKey(repoInfo.Index)
+	if authConfig != nil {
+		auths[authConfigKey] = *authConfig
+	}
+
 	pluginPullConfig := &distribution.ImagePullConfig{
 		Config: distribution.Config{
 			MetaHeaders:      metaHeader,
-			AuthConfig:       authConfig,
+			AuthConfigs:      auths,
 			RegistryService:  pm.config.RegistryService,
 			ImageEventLogger: pm.config.LogPluginEvent,
 			ImageStore:       dm,

@@ -98,11 +98,6 @@ func buildPullConfig(ctx context.Context, dockerCli *command.DockerCli, opts plu
 		return types.PluginInstallOptions{}, err
 	}
 
-	index, err := getRepoIndexFromUnnormalizedRef(ref)
-	if err != nil {
-		return types.PluginInstallOptions{}, err
-	}
-
 	repoInfoIndex, err := getRepoIndexFromUnnormalizedRef(ref)
 	if err != nil {
 		return types.PluginInstallOptions{}, err
@@ -136,7 +131,7 @@ func buildPullConfig(ctx context.Context, dockerCli *command.DockerCli, opts plu
 
 	dockerRef, err := reference.ParseNamed(ref.Name())
 	if err != nil {
-		return err
+		return types.PluginInstallOptions{}, err
 	}
 	encodedAuth, err := command.GetEncodedAuth(dockerCli, dockerRef)
 	if err != nil {
