@@ -4,7 +4,6 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -20,6 +19,7 @@ import (
 	"github.com/docker/docker/pkg/homedir"
 	"github.com/docker/go-connections/sockets"
 	"github.com/docker/go-connections/tlsconfig"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -107,7 +107,7 @@ func setupCertificates(dir string, tlsc *tls.Config) error {
 		if strings.HasSuffix(f.Name(), ".crt") {
 			systemPool, err := tlsconfig.SystemCertPool()
 			if err != nil {
-				return fmt.Errorf("unable to get system cert pool: %v", err)
+				return errors.Wrap(err, "unable to get system cert pool")
 			}
 			tlsc.RootCAs = systemPool
 			logrus.Debugf("crt: %s", fullPath)
@@ -122,7 +122,7 @@ func setupCertificates(dir string, tlsc *tls.Config) error {
 			keyName := certName[:len(certName)-5] + ".key"
 			logrus.Debugf("cert: %s", fullPath)
 			if !hasFile(fs, keyName) {
-				return fmt.Errorf("missing key %s for client certificate %s. Note that CA certificates should use the extension .crt", keyName, certName)
+				return errors.Errorf("missing key %s for client certificate %s. Note that CA certificates should use the extension .crt", keyName, certName)
 			}
 			cert, err := tls.LoadX509KeyPair(filepath.Join(dir, certName), filepath.Join(dir, keyName))
 			if err != nil {
@@ -135,7 +135,7 @@ func setupCertificates(dir string, tlsc *tls.Config) error {
 			certName := keyName[:len(keyName)-4] + ".cert"
 			logrus.Debugf("key: %s", fullPath)
 			if !hasFile(fs, certName) {
-				return fmt.Errorf("missing client certificate %s for key %s", certName, keyName)
+				return errors.Errorf("missing client certificate %s for key %s", certName, keyName)
 			}
 		}
 	}
@@ -264,7 +264,7 @@ func (c *dockerClient) setupRequestAuth(req *http.Request) error {
 	case "bearer":
 		realm, ok := challenge.Parameters["realm"]
 		if !ok {
-			return errors.New("missing realm in bearer auth challenge")
+			return errors.Errorf("missing realm in bearer auth challenge")
 		}
 		service, _ := challenge.Parameters["service"] // Will be "" if not present
 		scope := fmt.Sprintf("repository:%s:%s", c.scope.remoteName, c.scope.actions)
@@ -275,7 +275,7 @@ func (c *dockerClient) setupRequestAuth(req *http.Request) error {
 		req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
 		return nil
 	}
-	return fmt.Errorf("no handler for %s authentication", challenge.Scheme)
+	return errors.Errorf("no handler for %s authentication", challenge.Scheme)
 }
 
 func (c *dockerClient) getBearerToken(realm, service, scope string) (string, error) {
@@ -305,11 +305,11 @@ func (c *dockerClient) getBearerToken(realm, service, scope string) (string, err
 	defer res.Body.Close()
 	switch res.StatusCode {
 	case http.StatusUnauthorized:
-		return "", fmt.Errorf("unable to retrieve auth token: 401 unauthorized")
+		return "", errors.Errorf("unable to retrieve auth token: 401 unauthorized")
 	case http.StatusOK:
 		break
 	default:
-		return "", fmt.Errorf("unexpected http code: %d, URL: %s", res.StatusCode, authReq.URL)
+		return "", errors.Errorf("unexpected http code: %d, URL: %s", res.StatusCode, authReq.URL)
 	}
 	tokenBlob, err := ioutil.ReadAll(res.Body)
 	if err != nil {
@@ -353,7 +353,7 @@ func getAuth(ctx *types.SystemContext, registry string) (string, string, error) 
 			if os.IsNotExist(err) {
 				return "", "", nil
 			}
-			return "", "", fmt.Errorf("%s - %v", oldDockerCfgPath, err)
+			return "", "", errors.Wrap(err, oldDockerCfgPath)
 		}
 
 		j, err := ioutil.ReadFile(oldDockerCfgPath)
@@ -365,7 +365,7 @@ func getAuth(ctx *types.SystemContext, registry string) (string, string, error) 
 		}
 
 	} else if err != nil {
-		return "", "", fmt.Errorf("%s - %v", dockerCfgPath, err)
+		return "", "", errors.Wrap(err, dockerCfgPath)
 	}
 
 	// I'm feeling lucky
@@ -396,7 +396,7 @@ func (c *dockerClient) ping() error {
 		defer resp.Body.Close()
 		logrus.Debugf("Ping %s status %d", scheme+"://"+c.registry+"/v2/", resp.StatusCode)
 		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusUnauthorized {
-			return fmt.Errorf("error pinging repository, response code %d", resp.StatusCode)
+			return errors.Errorf("error pinging repository, response code %d", resp.StatusCode)
 		}
 		c.challenges = parseAuthHeader(resp.Header)
 		c.scheme = scheme
@@ -407,7 +407,7 @@ func (c *dockerClient) ping() error {
 		err = ping("http")
 	}
 	if err != nil {
-		err = fmt.Errorf("pinging docker registry returned: %v", err)
+		err = errors.Wrap(err, "pinging docker registry returned")
 		if c.ctx != nil && c.ctx.DockerDisableV1Ping {
 			return err
 		}
