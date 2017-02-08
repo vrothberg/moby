@@ -63,6 +63,7 @@ dockerd - Enable daemon mode
 [**--seccomp-profile**[=*SECCOMP-PROFILE-PATH*]]
 [**--selinux-enabled**]
 [**--shutdown-timeout**[=*15*]]
+[**--signature-verification**]
 [**--storage-opt**[=*[]*]]
 [**--swarm-default-advertise-addr**[=*IP|INTERFACE*]]
 [**--tls**]
@@ -336,6 +337,10 @@ unix://[/path/to/socket] to use.
 **--shutdown-timeout**=*15*
   Set the shutdown timeout value in seconds. Default is `15`.
 
+**--signature-verification**=*true*|*false*
+  Enable image signature verification. Default is true. WARNING: this option doesn't work
+  with images being pulled from v1 docker registries. See SIGNATURE VERIFICATION.
+
 **--storage-opt**=[]
   Set storage driver options. See STORAGE DRIVER OPTIONS.
 
@@ -375,6 +380,15 @@ unix://[/path/to/socket] to use.
   Specifying a user (or uid) and optionally a group (or gid) will cause the
   daemon to lookup the user and group's subordinate ID ranges for use as the
   user namespace mappings for contained processes.
+
+# SIGNATURE VERIFICATION
+
+Docker supports GPG image signatures verification when **--signature-verification**
+flag is *true*.
+This functionality works only at pull time and for images being pulled from docker
+registries version 2.
+You can sign an image using skopeo(1) or atomic(1).
+See https://access.redhat.com/articles/2750891.
 
 # STORAGE DRIVER OPTIONS
 
