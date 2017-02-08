@@ -91,7 +91,7 @@ func RegistryAuthenticationPrivilegedFunc(cli *DockerCli, index *registrytypes.I
 func ResolveAuthConfig(ctx context.Context, cli *DockerCli, index *registrytypes.IndexInfo) types.AuthConfig {
 	configKey := index.Name
 	if index.Official {
-		configKey = ElectAuthServer(ctx, cli)
+		configKey = "https://index.docker.io/v1/"
 	}
 
 	a, _ := cli.CredentialsStore(configKey).Get(configKey)

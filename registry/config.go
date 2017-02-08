@@ -329,16 +329,27 @@ func GetAuthConfigKey(index *registrytypes.IndexInfo) string {
 // newRepositoryInfo validates and breaks down a repository name into a RepositoryInfo
 func newRepositoryInfo(config *serviceConfig, name reference.Named) (*RepositoryInfo, error) {
 	indexName := name.Hostname()
-	if indexName == "" {
-		indexName = IndexServerName()
-		if indexName == "" {
-			return nil, fmt.Errorf("No default registry configured.")
-		}
-		fqr, err := reference.QualifyUnqualifiedReference(name, indexName)
+	if reference.IsReferenceFullyQualified(name) {
+		var err error
+		indexName, _, err = reference.SplitReposName(name)
 		if err != nil {
 			return nil, err
 		}
-		name = fqr
+		if indexName == "" {
+			indexName = IndexName
+		}
+	} else {
+		if indexName == "" {
+			indexName = IndexServerName()
+			if indexName == "" {
+				return nil, fmt.Errorf("No default registry configured.")
+			}
+			fqr, err := reference.QualifyUnqualifiedReference(name, indexName)
+			if err != nil {
+				return nil, err
+			}
+			name = fqr
+		}
 	}
 	index, err := newIndexInfo(config, indexName)
 	if err != nil {
