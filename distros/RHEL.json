@@ -33,9 +33,12 @@
       "  tar \\" ],
     "buildtags": "ENV DOCKER_BUILDTAGS pkcs11 seccomp selinux",
     "buildtagsRunc": "        && make static BUILDTAGS=\"seccomp selinux\" \\",
+    "seccompPrefix": "                && ./configure --prefix=/usr/ \\",
     "markers": [
       "Cut for distribution specific",
       "End dependencies cut",
+      "Cut for seccomp prefix",
+      "End seccomp prefix cut",
       "Cut for buildtags distribution",
       "End buildtags cut",
       "Cut for buildtags runc distribution",
