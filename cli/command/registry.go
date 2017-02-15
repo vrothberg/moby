@@ -128,7 +128,7 @@ func ConfigureAuth(cli *DockerCli, flUser, flPassword, serverAddress string, isD
 	authconfig.Username = strings.TrimSpace(authconfig.Username)
 
 	if flUser = strings.TrimSpace(flUser); flUser == "" {
-		if isDefaultRegistry {
+		if serverAddress == "https://index.docker.io/v1/" {
 			// if this is a default registry (docker hub), then display the following message.
 			fmt.Fprintln(cli.Out(), "Login with your Docker ID to push and pull images from Docker Hub. If you don't have a Docker ID, head over to https://hub.docker.com to create one.")
 		}
