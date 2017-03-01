@@ -862,6 +862,7 @@ func (devices *DeviceSet) takeSnapshot(hash string, baseInfo *devInfo, size uint
 				if err != devicemapper.ErrEnxio {
 					return err
 				}
+				devinfo = nil
 			} else {
 				defer devices.deactivateDevice(baseInfo)
 			}
