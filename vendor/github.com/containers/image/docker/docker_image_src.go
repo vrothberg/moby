@@ -11,10 +11,12 @@ import (
 	"strconv"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/containers/image/docker/reference"
 	"github.com/containers/image/manifest"
 	"github.com/containers/image/types"
-	"github.com/docker/distribution/digest"
 	"github.com/docker/distribution/registry/client"
+	"github.com/opencontainers/go-digest"
+	"github.com/pkg/errors"
 )
 
 type dockerImageSource struct {
@@ -38,6 +40,17 @@ func newImageSource(ctx *types.SystemContext, ref dockerReference, requestedMani
 	if requestedManifestMIMETypes == nil {
 		requestedManifestMIMETypes = manifest.DefaultRequestedManifestMIMETypes
 	}
+	supportedMIMEs := supportedManifestMIMETypesMap()
+	acceptableRequestedMIMEs := false
+	for _, mtrequested := range requestedManifestMIMETypes {
+		if supportedMIMEs[mtrequested] {
+			acceptableRequestedMIMEs = true
+			break
+		}
+	}
+	if !acceptableRequestedMIMEs {
+		requestedManifestMIMETypes = manifest.DefaultRequestedManifestMIMETypes
+	}
 	return &dockerImageSource{
 		ref: ref,
 		requestedManifestMIMETypes: requestedManifestMIMETypes,
@@ -52,7 +65,8 @@ func (s *dockerImageSource) Reference() types.ImageReference {
 }
 
 // Close removes resources associated with an initialized ImageSource, if any.
-func (s *dockerImageSource) Close() {
+func (s *dockerImageSource) Close() error {
+	return nil
 }
 
 // simplifyContentType drops parameters from a HTTP media type (see https://tools.ietf.org/html/rfc7231#section-3.1.1.1)
@@ -79,7 +93,7 @@ func (s *dockerImageSource) GetManifest() ([]byte, string, error) {
 }
 
 func (s *dockerImageSource) fetchManifest(tagOrDigest string) ([]byte, string, error) {
-	url := fmt.Sprintf(manifestURL, s.ref.ref.RemoteName(), tagOrDigest)
+	url := fmt.Sprintf(manifestURL, reference.Path(s.ref.ref), tagOrDigest)
 	headers := make(map[string][]string)
 	headers["Accept"] = s.requestedManifestMIMETypes
 	res, err := s.c.makeRequest("GET", url, headers, nil)
@@ -139,7 +153,7 @@ func (s *dockerImageSource) getExternalBlob(urls []string) (io.ReadCloser, int64
 		resp, err = s.c.makeRequestToResolvedURL("GET", url, nil, nil, -1, false)
 		if err == nil {
 			if resp.StatusCode != http.StatusOK {
-				err = fmt.Errorf("error fetching external blob from %q: %d", url, resp.StatusCode)
+				err = errors.Errorf("error fetching external blob from %q: %d", url, resp.StatusCode)
 				logrus.Debug(err)
 				continue
 			}
@@ -165,7 +179,7 @@ func (s *dockerImageSource) GetBlob(info types.BlobInfo) (io.ReadCloser, int64, 
 		return s.getExternalBlob(info.URLs)
 	}
 
-	url := fmt.Sprintf(blobsURL, s.ref.ref.RemoteName(), info.Digest.String())
+	url := fmt.Sprintf(blobsURL, reference.Path(s.ref.ref), info.Digest.String())
 	logrus.Debugf("Downloading %s", url)
 	res, err := s.c.makeRequest("GET", url, nil, nil)
 	if err != nil {
@@ -173,7 +187,7 @@ func (s *dockerImageSource) GetBlob(info types.BlobInfo) (io.ReadCloser, int64, 
 	}
 	if res.StatusCode != http.StatusOK {
 		// print url also
-		return nil, 0, fmt.Errorf("Invalid status code returned when fetching blob %d", res.StatusCode)
+		return nil, 0, errors.Errorf("Invalid status code returned when fetching blob %d", res.StatusCode)
 	}
 	return res.Body, getBlobSize(res), nil
 }
@@ -195,7 +209,7 @@ func (s *dockerImageSource) GetSignatures() ([][]byte, error) {
 	for i := 0; ; i++ {
 		url := signatureStorageURL(s.c.signatureBase, manifestDigest, i)
 		if url == nil {
-			return nil, fmt.Errorf("Internal error: signatureStorageURL with non-nil base returned nil")
+			return nil, errors.Errorf("Internal error: signatureStorageURL with non-nil base returned nil")
 		}
 		signature, missing, err := s.getOneSignature(url)
 		if err != nil {
@@ -234,7 +248,7 @@ func (s *dockerImageSource) getOneSignature(url *url.URL) (signature []byte, mis
 		if res.StatusCode == http.StatusNotFound {
 			return nil, true, nil
 		} else if res.StatusCode != http.StatusOK {
-			return nil, false, fmt.Errorf("Error reading signature from %s: status %d", url.String(), res.StatusCode)
+			return nil, false, errors.Errorf("Error reading signature from %s: status %d", url.String(), res.StatusCode)
 		}
 		sig, err := ioutil.ReadAll(res.Body)
 		if err != nil {
@@ -243,7 +257,7 @@ func (s *dockerImageSource) getOneSignature(url *url.URL) (signature []byte, mis
 		return sig, false, nil
 
 	default:
-		return nil, false, fmt.Errorf("Unsupported scheme when reading signature from %s", url.String())
+		return nil, false, errors.Errorf("Unsupported scheme when reading signature from %s", url.String())
 	}
 }
 
@@ -259,11 +273,11 @@ func deleteImage(ctx *types.SystemContext, ref dockerReference) error {
 	headers := make(map[string][]string)
 	headers["Accept"] = []string{manifest.DockerV2Schema2MediaType}
 
-	reference, err := ref.tagOrDigest()
+	refTail, err := ref.tagOrDigest()
 	if err != nil {
 		return err
 	}
-	getURL := fmt.Sprintf(manifestURL, ref.ref.RemoteName(), reference)
+	getURL := fmt.Sprintf(manifestURL, reference.Path(ref.ref), refTail)
 	get, err := c.makeRequest("GET", getURL, headers, nil)
 	if err != nil {
 		return err
@@ -276,13 +290,13 @@ func deleteImage(ctx *types.SystemContext, ref dockerReference) error {
 	switch get.StatusCode {
 	case http.StatusOK:
 	case http.StatusNotFound:
-		return fmt.Errorf("Unable to delete %v. Image may not exist or is not stored with a v2 Schema in a v2 registry", ref.ref)
+		return errors.Errorf("Unable to delete %v. Image may not exist or is not stored with a v2 Schema in a v2 registry", ref.ref)
 	default:
-		return fmt.Errorf("Failed to delete %v: %s (%v)", ref.ref, manifestBody, get.Status)
+		return errors.Errorf("Failed to delete %v: %s (%v)", ref.ref, manifestBody, get.Status)
 	}
 
 	digest := get.Header.Get("Docker-Content-Digest")
-	deleteURL := fmt.Sprintf(manifestURL, ref.ref.RemoteName(), digest)
+	deleteURL := fmt.Sprintf(manifestURL, reference.Path(ref.ref), digest)
 
 	// When retrieving the digest from a registry >= 2.3 use the following header:
 	//   "Accept": "application/vnd.docker.distribution.manifest.v2+json"
@@ -297,7 +311,7 @@ func deleteImage(ctx *types.SystemContext, ref dockerReference) error {
 		return err
 	}
 	if delete.StatusCode != http.StatusAccepted {
-		return fmt.Errorf("Failed to delete %v: %s (%v)", deleteURL, string(body), delete.Status)
+		return errors.Errorf("Failed to delete %v: %s (%v)", deleteURL, string(body), delete.Status)
 	}
 
 	if c.signatureBase != nil {
@@ -309,7 +323,7 @@ func deleteImage(ctx *types.SystemContext, ref dockerReference) error {
 		for i := 0; ; i++ {
 			url := signatureStorageURL(c.signatureBase, manifestDigest, i)
 			if url == nil {
-				return fmt.Errorf("Internal error: signatureStorageURL with non-nil base returned nil")
+				return errors.Errorf("Internal error: signatureStorageURL with non-nil base returned nil")
 			}
 			missing, err := c.deleteOneSignature(url)
 			if err != nil {
