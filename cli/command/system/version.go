@@ -11,7 +11,6 @@ import (
 	"github.com/docker/docker/cli"
 	"github.com/docker/docker/cli/command"
 	"github.com/docker/docker/dockerversion"
-	"github.com/docker/docker/pkg/rpm"
 	"github.com/docker/docker/utils/templates"
 	"github.com/spf13/cobra"
 )
@@ -72,7 +71,6 @@ func runVersion(dockerCli *command.DockerCli, opts *versionOptions) error {
 		return cli.StatusError{StatusCode: 64,
 			Status: "Template parsing error: " + err.Error()}
 	}
-	packageVersion, _ := rpm.Version("/usr/bin/docker")
 
 	APIVersion := dockerCli.Client().ClientVersion()
 	if defaultAPIVersion := dockerCli.DefaultVersion(); APIVersion != defaultAPIVersion {
@@ -83,7 +81,7 @@ func runVersion(dockerCli *command.DockerCli, opts *versionOptions) error {
 		Client: &types.Version{
 			Version:    dockerversion.Version,
 			APIVersion: APIVersion,
-			PkgVersion: packageVersion,
+			PkgVersion: "<unknown>",
 			GoVersion:  runtime.Version(),
 			GitCommit:  dockerversion.GitCommit,
 			BuildTime:  dockerversion.BuildTime,
