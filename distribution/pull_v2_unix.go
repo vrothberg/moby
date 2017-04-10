@@ -43,7 +43,7 @@ func (p *v2Puller) checkTrusted(c gctx.Context, ref reference.Named) (reference.
 	// we modified docker/docker/reference and it's not doing any normalization.
 	// we instead forked docker/docker/reference in containers/image and we need
 	// this parsing here to make sure signature naming checks are consistent.
-	dockerRef, err := containersImageRef.ParseNamed(ref.String())
+	dockerRef, err := containersImageRef.ParseNormalizedNamed(ref.String())
 	if err != nil {
 		return nil, err
 	}
