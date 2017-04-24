@@ -146,6 +146,13 @@ func (daemon *Daemon) containerStart(container *container.Container, checkpoint 
 		return err
 	}
 
+	if daemon.configStore.EnableSecrets {
+		// SUSE:secrets -- inject the SUSE secret store
+		if err := daemon.injectSuseSecretStore(container); err != nil {
+			return err
+		}
+	}
+
 	spec, err := daemon.createSpec(container)
 	if err != nil {
 		return err
