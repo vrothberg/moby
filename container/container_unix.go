@@ -263,6 +263,7 @@ func (container *Container) SecretMount() *Mount {
 			Source:      container.SecretMountPath(),
 			Destination: containerSecretMountPath,
 			Writable:    false,
+			Propagation: "rprivate",
 		}
 	}
 
