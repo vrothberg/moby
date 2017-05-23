@@ -28,6 +28,7 @@ import (
 	"github.com/docker/docker/daemon/exec"
 	"github.com/docker/docker/daemon/initlayer"
 	"github.com/docker/docker/dockerversion"
+	"github.com/docker/docker/pkg/mount"
 	"github.com/docker/docker/plugin"
 	"github.com/docker/libnetwork/cluster"
 	// register graph drivers
@@ -563,6 +564,9 @@ func NewDaemon(config *Config, registryService registry.Service, containerdRemot
 	if err := idtools.MkdirAllAs(daemonRepo, 0700, rootUID, rootGID); err != nil && !os.IsExist(err) {
 		return nil, err
 	}
+	if err := mount.MakeRPrivate(daemonRepo); err != nil {
+		return nil, err
+	}
 
 	if runtime.GOOS == "windows" {
 		if err := system.MkdirAll(filepath.Join(config.Root, "credentialspecs"), 0); err != nil && !os.IsExist(err) {
@@ -841,6 +845,10 @@ func (daemon *Daemon) Shutdown() error {
 		if err := daemon.layerStore.Cleanup(); err != nil {
 			logrus.Errorf("Error during layer Store.Cleanup(): %v", err)
 		}
+	}
+
+	if err := mount.Unmount(daemon.repository); err != nil {
+		logrus.Errorf("Error umounting daemon repository: %v")
 	}
 
 	// Shutdown plugins after containers and layerstore. Don't change the order.
