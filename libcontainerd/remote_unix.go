@@ -415,6 +415,18 @@ func (r *remote) runContainerdDaemon() error {
 	if err := cmd.Start(); err != nil {
 		return err
 	}
+
+	// unless strictly necessary, do not add anything in between here
+	// as the reaper goroutine below needs to kick in as soon as possible
+	// and any "return" from code paths added here will defeat the reaper
+	// process.
+
+	r.daemonWaitCh = make(chan struct{})
+	go func() {
+		cmd.Wait()
+		close(r.daemonWaitCh)
+	}() // Reap our child when needed
+
 	logrus.Infof("libcontainerd: new containerd process, pid: %d", cmd.Process.Pid)
 	if err := setOOMScore(cmd.Process.Pid, r.oomScore); err != nil {
 		utils.KillProcess(cmd.Process.Pid)
@@ -425,11 +437,6 @@ func (r *remote) runContainerdDaemon() error {
 		return err
 	}
 
-	r.daemonWaitCh = make(chan struct{})
-	go func() {
-		cmd.Wait()
-		close(r.daemonWaitCh)
-	}() // Reap our child when needed
 	r.daemonPid = cmd.Process.Pid
 	return nil
 }
