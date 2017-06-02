@@ -696,7 +696,7 @@ func configureKernelSecuritySupport(config *Config, driverName string) error {
 			}
 
 			if !supported {
-				logrus.Errorf("SELinux is not supported with the %s graph driver on this kernel. Either boot into a newer kernel or disable selinux in docker (--selinux-enabled=false)", driverName)
+				return fmt.Errorf("SELinux is not supported with the %s graph driver on this kernel. Either boot into a newer kernel or disable selinux in docker (--selinux-enabled=false)", driverName)
 			}
 		}
 	} else {
