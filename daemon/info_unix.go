@@ -36,7 +36,8 @@ func (daemon *Daemon) FillPlatformInfo(v *types.Info, sysInfo *sysinfo.SysInfo) 
 	}
 
 	v.RuncCommit.Expected = dockerversion.RuncCommitID
-	if rv, err := exec.Command(DefaultRuntimeBinary, "--version").Output(); err == nil {
+	defaultRuntime := daemon.configStore.GetRuntime(daemon.configStore.GetDefaultRuntimeName()).Path
+	if rv, err := exec.Command(defaultRuntime, "--version").Output(); err == nil {
 		parts := strings.Split(strings.TrimSpace(string(rv)), "\n")
 		if len(parts) == 3 {
 			parts = strings.Split(parts[1], ": ")
@@ -55,7 +56,7 @@ func (daemon *Daemon) FillPlatformInfo(v *types.Info, sysInfo *sysinfo.SysInfo) 
 	}
 
 	v.InitCommit.Expected = dockerversion.InitCommitID
-	if rv, err := exec.Command(DefaultInitBinary, "--version").Output(); err == nil {
+	if rv, err := exec.Command(daemon.configStore.GetInitPath(), "--version").Output(); err == nil {
 		parts := strings.Split(strings.TrimSpace(string(rv)), " - ")
 		if len(parts) == 2 {
 			if dockerversion.InitCommitID[0] == 'v' {

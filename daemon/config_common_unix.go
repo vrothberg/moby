@@ -79,7 +79,7 @@ func (config *Config) GetExecRoot() string {
 	return config.ExecRoot
 }
 
-// GetInitPath returns the configure docker-init path
+// GetInitPath returns the configured docker-init path
 func (config *Config) GetInitPath() string {
 	config.reloadLock.Lock()
 	defer config.reloadLock.Unlock()
