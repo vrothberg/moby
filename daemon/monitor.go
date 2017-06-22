@@ -9,6 +9,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/container"
 	"github.com/docker/docker/libcontainerd"
 	"github.com/docker/docker/restartmanager"
 )
@@ -29,14 +30,6 @@ func (daemon *Daemon) StateChanged(id string, e libcontainerd.StateInfo) error {
 		daemon.updateHealthMonitor(c)
 		daemon.LogContainerEvent(c, "oom")
 	case libcontainerd.StateExit:
-		// if container's AutoRemove flag is set, remove it after clean up
-		autoRemove := func() {
-			if c.HostConfig.AutoRemove {
-				if err := daemon.ContainerRm(c.ID, &types.ContainerRmConfig{ForceRemove: true, RemoveVolume: true}); err != nil {
-					logrus.Errorf("can't remove container %s: %v", c.ID, err)
-				}
-			}
-		}
 
 		c.Lock()
 		c.StreamConfig.Wait()
@@ -48,7 +41,7 @@ func (daemon *Daemon) StateChanged(id string, e libcontainerd.StateInfo) error {
 			c.SetRestarting(platformConstructExitStatus(e))
 		} else {
 			c.SetStopped(platformConstructExitStatus(e))
-			defer autoRemove()
+			defer daemon.autoRemove(c)
 		}
 
 		daemon.updateHealthMonitor(c)
@@ -68,7 +61,7 @@ func (daemon *Daemon) StateChanged(id string, e libcontainerd.StateInfo) error {
 				}
 				if err != nil {
 					c.SetStopped(platformConstructExitStatus(e))
-					defer autoRemove()
+					defer daemon.autoRemove(c)
 					if err != restartmanager.ErrRestartCanceled {
 						logrus.Errorf("restartmanger wait error: %+v", err)
 					}
@@ -129,4 +122,25 @@ func (daemon *Daemon) StateChanged(id string, e libcontainerd.StateInfo) error {
 	}
 
 	return nil
+}
+
+func (daemon *Daemon) autoRemove(c *container.Container) {
+	c.Lock()
+	ar := c.HostConfig.AutoRemove
+	c.Unlock()
+	if !ar {
+		return
+	}
+
+	var err error
+	if err = daemon.ContainerRm(c.ID, &types.ContainerRmConfig{ForceRemove: true, RemoveVolume: true}); err == nil {
+		return
+	}
+	if c := daemon.containers.Get(c.ID); c == nil {
+		return
+	}
+
+	if err != nil {
+		logrus.WithError(err).WithField("container", c.ID).Error("error removing container")
+	}
 }

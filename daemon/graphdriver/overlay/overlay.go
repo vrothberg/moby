@@ -20,6 +20,7 @@ import (
 	"github.com/docker/docker/pkg/fsutils"
 	"github.com/docker/docker/pkg/idtools"
 	"github.com/docker/docker/pkg/mount"
+	"github.com/docker/docker/pkg/system"
 	"github.com/opencontainers/runc/libcontainer/label"
 )
 
@@ -334,10 +335,7 @@ func (d *Driver) dir(id string) string {
 
 // Remove cleans the directories that are created for this id.
 func (d *Driver) Remove(id string) error {
-	if err := os.RemoveAll(d.dir(id)); err != nil && !os.IsNotExist(err) {
-		return err
-	}
-	return nil
+	return system.EnsureRemoveAll(d.dir(id))
 }
 
 // Get creates and mounts the required file system for the given id and returns the mount path.

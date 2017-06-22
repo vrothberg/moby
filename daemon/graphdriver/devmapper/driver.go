@@ -15,6 +15,7 @@ import (
 	"github.com/docker/docker/pkg/devicemapper"
 	"github.com/docker/docker/pkg/idtools"
 	"github.com/docker/docker/pkg/mount"
+	"github.com/docker/docker/pkg/system"
 	"github.com/docker/go-units"
 )
 
@@ -155,7 +156,7 @@ func (d *Driver) Remove(id string) error {
 	}
 
 	mp := path.Join(d.home, "mnt", id)
-	if err := os.RemoveAll(mp); err != nil && !os.IsNotExist(err) {
+	if err := system.EnsureRemoveAll(mp); err != nil && !os.IsNotExist(err) {
 		return err
 	}
 
