@@ -1,6 +1,8 @@
 package mount
 
 import (
+	"sort"
+	"strings"
 	"time"
 )
 
@@ -71,4 +73,30 @@ func ForceUnmount(target string) (err error) {
 		time.Sleep(100 * time.Millisecond)
 	}
 	return
+}
+
+// RecursiveUnmount unmounts the target and all mounts underneath, starting with
+// the deepsest mount first.
+func RecursiveUnmount(target string) error {
+	mounts, err := GetMounts()
+	if err != nil {
+		return err
+	}
+
+	// Make the deepest mount be first
+	sort.Sort(sort.Reverse(byMountpoint(mounts)))
+
+	for i, m := range mounts {
+		if !strings.HasPrefix(m.Mountpoint, target) {
+			continue
+		}
+		if err := Unmount(m.Mountpoint); err != nil && i == len(mounts)-1 {
+			if mounted, err := Mounted(m.Mountpoint); err != nil || mounted {
+				return err
+			}
+			// Ignore errors for submounts and continue trying to unmount others
+			// The final unmount should fail if there ane any submounts remaining
+		}
+	}
+	return nil
 }

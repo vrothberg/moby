@@ -8,6 +8,7 @@ import (
 	"github.com/docker/docker/daemon/graphdriver"
 	"github.com/docker/docker/pkg/chrootarchive"
 	"github.com/docker/docker/pkg/idtools"
+	"github.com/docker/docker/pkg/system"
 
 	"github.com/opencontainers/runc/libcontainer/label"
 )
@@ -114,7 +115,7 @@ func (d *Driver) dir(id string) string {
 
 // Remove deletes the content from the directory for a given id.
 func (d *Driver) Remove(id string) error {
-	if err := os.RemoveAll(d.dir(id)); err != nil && !os.IsNotExist(err) {
+	if err := system.EnsureRemoveAll(d.dir(id)); err != nil && !os.IsNotExist(err) {
 		return err
 	}
 	return nil
