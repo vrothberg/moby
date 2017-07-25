@@ -82,8 +82,17 @@ func getFdFromWriter(w http.ResponseWriter) int {
 		return -1
 	}
 	sysfd := netfd.FieldByName("sysfd")
-	//Finally, we have the fd
-	return int(sysfd.Int())
+	if sysfd.IsValid() {
+		// go < 1.9
+		return int(sysfd.Int())
+	}
+	pfd := netfd.FieldByName("pfd")
+	if pfd.Kind() != reflect.Struct {
+		logrus.Warnf("could not get underlying pfd struct")
+		return -1
+	}
+	newSysfd := pfd.FieldByName("Sysfd")
+	return int(newSysfd.Int())
 }
 
 //Gets the ucred given an http response writer
