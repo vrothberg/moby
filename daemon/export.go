@@ -22,6 +22,14 @@ func (daemon *Daemon) ContainerExport(name string, out io.Writer) error {
 		return err
 	}
 
+	if container.IsDead() {
+		return fmt.Errorf("You cannot export container %s which is Dead", container.ID)
+	}
+
+	if container.IsRemovalInProgress() {
+		return fmt.Errorf("You cannot export container %s which is being removed", container.ID)
+	}
+
 	data, err := daemon.containerExport(container)
 	if err != nil {
 		return fmt.Errorf("Error exporting container %s: %v", name, err)
@@ -35,8 +43,19 @@ func (daemon *Daemon) ContainerExport(name string, out io.Writer) error {
 	return nil
 }
 
-func (daemon *Daemon) containerExport(container *container.Container) (io.ReadCloser, error) {
-	if err := daemon.Mount(container); err != nil {
+func (daemon *Daemon) containerExport(container *container.Container) (arch io.ReadCloser, err error) {
+	rwLayer, err := daemon.layerStore.GetRWLayer(container.ID)
+	if err != nil {
+		return nil, err
+	}
+	defer func() {
+		if err != nil {
+			daemon.layerStore.ReleaseRWLayer(rwLayer)
+		}
+	}()
+
+	_, err = rwLayer.Mount(container.GetMountLabel())
+	if err != nil {
 		return nil, err
 	}
 
@@ -47,12 +66,13 @@ func (daemon *Daemon) containerExport(container *container.Container) (io.ReadCl
 		GIDMaps:     gidMaps,
 	})
 	if err != nil {
-		daemon.Unmount(container)
+		rwLayer.Unmount()
 		return nil, err
 	}
-	arch := ioutils.NewReadCloserWrapper(archive, func() error {
+	arch = ioutils.NewReadCloserWrapper(archive, func() error {
 		err := archive.Close()
-		daemon.Unmount(container)
+		rwLayer.Unmount()
+		daemon.layerStore.ReleaseRWLayer(rwLayer)
 		return err
 	})
 	daemon.LogContainerEvent(container, "export")
