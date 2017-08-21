@@ -15,7 +15,6 @@ import (
 	"github.com/docker/docker/dockerversion"
 	"github.com/docker/docker/image"
 	"github.com/docker/docker/layer"
-	"github.com/docker/docker/pkg/ioutils"
 	"github.com/docker/docker/reference"
 )
 
@@ -129,6 +128,14 @@ func (daemon *Daemon) Commit(name string, c *backend.ContainerCommitConfig) (str
 	// It is not possible to commit a running container on Windows and on Solaris.
 	if (runtime.GOOS == "windows" || runtime.GOOS == "solaris") && container.IsRunning() {
 		return "", fmt.Errorf("%+v does not support commit of a running container", runtime.GOOS)
+	}
+
+	if container.IsDead() {
+		return "", fmt.Errorf("You cannot commit container %s which is Dead", container.ID)
+	}
+
+	if container.IsRemovalInProgress() {
+		return "", fmt.Errorf("You cannot commit container %s which is being removed", container.ID)
 	}
 
 	if c.Pause && !container.IsPaused() {
@@ -254,18 +261,15 @@ func (daemon *Daemon) Commit(name string, c *backend.ContainerCommitConfig) (str
 }
 
 func (daemon *Daemon) exportContainerRw(container *container.Container) (io.ReadCloser, error) {
-	if err := daemon.Mount(container); err != nil {
-		return nil, err
-	}
-
-	archive, err := container.RWLayer.TarStream()
+	rwLayer, err := daemon.layerStore.GetRWLayer(container.ID)
 	if err != nil {
-		daemon.Unmount(container) // logging is already handled in the `Unmount` function
 		return nil, err
 	}
-	return ioutils.NewReadCloserWrapper(archive, func() error {
-			archive.Close()
-			return container.RWLayer.Unmount()
-		}),
-		nil
+	defer daemon.layerStore.ReleaseRWLayer(rwLayer)
+
+	archive, err := rwLayer.TarStream()
+	if err != nil {
+		return nil, err
+	}
+	return archive, nil
 }
