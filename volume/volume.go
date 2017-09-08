@@ -128,7 +128,17 @@ func (m *MountPoint) Setup(mountLabel string, rootUID, rootGID int) (path string
 	defer func() {
 		if err == nil {
 			if label.RelabelNeeded(m.Mode) {
-				if err = label.Relabel(m.Source, mountLabel, label.IsShared(m.Mode)); err != nil {
+				sourcePath, err := filepath.EvalSymlinks(m.Source)
+				if err != nil {
+					path = ""
+					err = errors.Wrapf(err, "error evaluating symlink from mount source '%s'", m.Source)
+					return
+				}
+				err = label.Relabel(sourcePath, mountLabel, label.IsShared(m.Mode))
+				if err == syscall.ENOTSUP {
+					err = nil
+				}
+				if err != nil {
 					path = ""
 					err = errors.Wrapf(err, "error setting label on mount source '%s'", m.Source)
 					return
