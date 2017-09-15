@@ -37,6 +37,14 @@ func ValidateNetMode(c *container.Config, hc *container.HostConfig) error {
 		}
 	}
 
+	if parts[0] == "netns" {
+		if len(parts) < 2 || parts[1] == "" {
+			return fmt.Errorf("--net: invalid net mode: invalid netns format netns:/path/to/netns")
+		} else {
+			return nil
+		}
+	}
+
 	if hc.NetworkMode.IsContainer() && c.Hostname != "" {
 		return ErrConflictNetworkHostname
 	}

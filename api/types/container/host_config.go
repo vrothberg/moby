@@ -36,6 +36,12 @@ func (n IpcMode) IsHost() bool {
 	return n == "host"
 }
 
+// IsNetNs indicates whether container uses a container network namespace path.
+func (n NetworkMode) IsNetNs() bool {
+	parts := strings.SplitN(string(n), ":", 2)
+	return len(parts) > 1 && parts[0] == "netns"
+}
+
 // IsContainer indicates whether the container uses a container's ipc stack.
 func (n IpcMode) IsContainer() bool {
 	parts := strings.SplitN(string(n), ":", 2)
