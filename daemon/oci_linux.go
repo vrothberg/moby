@@ -251,6 +251,8 @@ func setNamespaces(daemon *Daemon, s *specs.Spec, c *container.Container) error 
 				nsUser.Path = fmt.Sprintf("/proc/%d/ns/user", nc.State.GetPID())
 				setNamespace(s, nsUser)
 			}
+		} else if c.HostConfig.NetworkMode.IsNetNs() {
+			ns.Path = parts[1]
 		} else if c.HostConfig.NetworkMode.IsHost() {
 			ns.Path = c.NetworkSettings.SandboxKey
 		}
