@@ -415,7 +415,7 @@ func (daemon *Daemon) updateContainerNetworkSettings(container *container.Contai
 	var n libnetwork.Network
 
 	mode := container.HostConfig.NetworkMode
-	if container.Config.NetworkDisabled || mode.IsContainer() {
+	if container.Config.NetworkDisabled || mode.IsContainer() || mode.IsNetNs() {
 		return
 	}
 
@@ -497,7 +497,7 @@ func (daemon *Daemon) allocateNetwork(container *container.Container) error {
 
 	updateSettings := false
 	if len(container.NetworkSettings.Networks) == 0 {
-		if container.Config.NetworkDisabled || container.HostConfig.NetworkMode.IsContainer() {
+		if container.Config.NetworkDisabled || container.HostConfig.NetworkMode.IsContainer() || container.HostConfig.NetworkMode.IsNetNs() {
 			return nil
 		}
 
@@ -650,6 +650,9 @@ func (daemon *Daemon) updateNetworkConfig(container *container.Container, n libn
 
 func (daemon *Daemon) connectToNetwork(container *container.Container, idOrName string, endpointConfig *networktypes.EndpointSettings, updateSettings bool) (err error) {
 	start := time.Now()
+	if container.HostConfig.NetworkMode.IsNetNs() {
+		return nil
+	}
 	if container.HostConfig.NetworkMode.IsContainer() {
 		return runconfig.ErrConflictSharedNetwork
 	}
@@ -863,6 +866,8 @@ func (daemon *Daemon) initializeNetworking(container *container.Container) error
 		return err
 	}
 
+	// build hostname file based on netns via --network=netns:/path/to/netns ?
+
 	return container.BuildHostnameFile()
 }
 
@@ -889,7 +894,7 @@ func (daemon *Daemon) releaseNetwork(container *container.Container) {
 	if daemon.netController == nil {
 		return
 	}
-	if container.HostConfig.NetworkMode.IsContainer() || container.Config.NetworkDisabled {
+	if container.HostConfig.NetworkMode.IsContainer() || container.Config.NetworkDisabled || container.HostConfig.NetworkMode.IsNetNs() {
 		return
 	}
 
