@@ -267,13 +267,13 @@ func logAction(w http.ResponseWriter, r *http.Request, d *daemon.Daemon) error {
 		message = fmt.Sprintf("ID=%v, %s", c.ID, message)
 	}
 	message = fmt.Sprintf("{Action=%v, %s}", action, message)
-	// Log info messages at Debug Level
-	// Log messages that change state at Info level
+	// Log messages at Debug Level
+	// Log messages that change state in Audit log
 	switch action {
 	case "history", "events", "stats", "search", "json", "version", "images", "info":
 		logrus.Debug(message)
 	default:
-		logrus.Info(message)
+		logrus.Debug(message)
 		logAuditlog(c, action, username, loginuid, true)
 	}
 	return nil
