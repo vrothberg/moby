@@ -2838,7 +2838,7 @@ func (s *DockerSuite) TestRunContainerWithReadonlyRootfs(c *check.C) {
 	if root := os.Getenv("DOCKER_REMAP_ROOT"); root != "" {
 		testPriv = false
 	}
-	testReadOnlyFile(c, testPriv, "/file", "/etc/hosts", "/etc/resolv.conf", "/etc/hostname", "/sys/kernel", "/dev/.dont.touch.me")
+	testReadOnlyFile(c, testPriv, "/file", "/etc/hosts", "/etc/resolv.conf", "/etc/hostname", "/sys/kernel")
 }
 
 func (s *DockerSuite) TestPermissionsPtsReadonlyRootfs(c *check.C) {
