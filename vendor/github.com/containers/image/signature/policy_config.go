@@ -72,7 +72,7 @@ func NewPolicyFromFile(fileName string) (*Policy, error) {
 	}
 	policy, err := NewPolicyFromBytes(contents)
 	if err != nil {
-		return nil, errors.Wrapf(err, "invalid policy data in %q", fileName)
+		return nil, errors.Wrapf(err, "invalid policy in %q", fileName)
 	}
 	return policy, nil
 }
