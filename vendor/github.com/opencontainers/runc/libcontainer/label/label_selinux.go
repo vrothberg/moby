@@ -49,7 +49,7 @@ func InitLabels(options []string) (string, string, error) {
 				mcon[con[0]] = con[1]
 			}
 		}
-		_ = ReleaseLabel(processLabel)
+		_ = UnreserveLabel(processLabel)
 		processLabel = pcon.Get()
 		mountLabel = mcon.Get()
 		_ = ReserveLabel(processLabel)
