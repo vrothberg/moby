@@ -195,14 +195,8 @@ func (daemon *Daemon) setupSecretDir(c *container.Container) (setupErr error) {
 		if secret == nil {
 			return fmt.Errorf("unable to get secret from secret store")
 		}
-		if s.File.Mode.IsDir() {
-			if err := os.Mkdir(fPath, s.File.Mode); err != nil {
-				return errors.Wrap(err, "error injecting secret dir")
-			}
-		} else {
-			if err := ioutil.WriteFile(fPath, secret.Spec.Data, s.File.Mode); err != nil {
-				return errors.Wrap(err, "error injecting secret")
-			}
+		if err := ioutil.WriteFile(fPath, secret.Spec.Data, s.File.Mode); err != nil {
+			return errors.Wrap(err, "error injecting secret")
 		}
 
 		uid, err := strconv.Atoi(s.File.UID)
