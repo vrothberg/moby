@@ -192,7 +192,7 @@ func (daemon *Daemon) setupSecretDir(c *container.Container) (setupErr error) {
 			return fmt.Errorf("unable to get secret from secret store")
 		}
 		if s.File.Mode.IsDir() {
-			if err := os.MkdirAll(fPath, s.File.Mode); err != nil {
+			if err := os.Mkdir(fPath, s.File.Mode); err != nil {
 				return errors.Wrap(err, "error injecting secret dir")
 			}
 		} else {
