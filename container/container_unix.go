@@ -263,6 +263,7 @@ func (container *Container) SecretMount() *Mount {
 			Source:      container.SecretMountPath(),
 			Destination: containerSecretMountPath,
 			Writable:    false,
+			Propagation: "rprivate",
 		}
 	}
 
@@ -451,4 +452,39 @@ func cleanResourcePath(path string) string {
 // EnableServiceDiscoveryOnDefaultNetwork Enable service discovery on default network
 func (container *Container) EnableServiceDiscoveryOnDefaultNetwork() bool {
 	return false
+}
+
+// SecretMountRHEL returns the Secret Mount point
+func (container *Container) SecretMountRHEL(rootUID, rootGID int) (*Mount, error) {
+	secretsPath, err := container.GetRootResourcePath("secrets")
+	if err != nil {
+		return nil, fmt.Errorf("GetSecretsPath failed: %v", err)
+	}
+
+	if err := os.RemoveAll(secretsPath); err != nil {
+		return nil, fmt.Errorf("RemoveSecretsPath failed: %v", err)
+	}
+
+	if err := os.MkdirAll(secretsPath, 0755); err != nil {
+		return nil, fmt.Errorf("MakeDirSecretsPath failed: %v", err)
+	}
+
+	data, err := getHostSecretData()
+	if err != nil {
+		return nil, fmt.Errorf("GetHostSecretData failed: %v", err)
+	}
+	for _, s := range data {
+		s.SaveTo(secretsPath)
+	}
+
+	if rootUID != 0 {
+		callback := func(p string, info os.FileInfo, err error) error {
+			return os.Chown(p, rootUID, rootGID)
+		}
+
+		filepath.Walk(secretsPath, callback)
+	}
+	label.Relabel(secretsPath, container.MountLabel, false)
+
+	return nil, nil
 }

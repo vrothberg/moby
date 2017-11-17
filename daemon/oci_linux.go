@@ -693,10 +693,6 @@ func (daemon *Daemon) createSpec(c *container.Container) (*specs.Spec, error) {
 		return nil, err
 	}
 
-	if err := daemon.setupSecretDir(c); err != nil {
-		return nil, err
-	}
-
 	ms, err := daemon.setupMounts(c)
 	if err != nil {
 		return nil, err
@@ -710,7 +706,28 @@ func (daemon *Daemon) createSpec(c *container.Container) (*specs.Spec, error) {
 	}
 	ms = append(ms, tmpfsMounts...)
 
-	if m := c.SecretMount(); m != nil {
+	rootUID, rootGID := daemon.GetRemappedUIDGID()
+	if daemon.configStore.EnableSecrets {
+		_, err := c.SecretMountRHEL(rootUID, rootGID)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if err := daemon.setupSecretDir(c); err != nil {
+		return nil, err
+	}
+
+	sm := c.SecretMount()
+	if sm != nil {
+		ms = append(ms, *sm)
+	} else {
+		// add the rhel mount
+		m := &container.Mount{}
+		m.Source = c.SecretMountPath()
+		m.Destination = "/run/secrets"
+		m.Writable = true
+		m.Propagation = "rprivate"
 		ms = append(ms, *m)
 	}
 
