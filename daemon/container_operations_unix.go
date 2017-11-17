@@ -177,6 +177,10 @@ func (daemon *Daemon) setupSecretDir(c *container.Container) (setupErr error) {
 		}
 
 		targetPath := filepath.Clean(s.File.Name)
+		// ensure that the target is a filename only; no paths allowed
+		if targetPath != filepath.Base(targetPath) {
+			return fmt.Errorf("error creating secret: secret must not be a path")
+		}
 
 		fPath := filepath.Join(localMountPath, targetPath)
 		if err := idtools.MkdirAllAs(filepath.Dir(fPath), 0700, rootUID, rootGID); err != nil {
@@ -214,8 +218,6 @@ func (daemon *Daemon) setupSecretDir(c *container.Container) (setupErr error) {
 			return errors.Wrap(err, "error setting ownership for secret")
 		}
 	}
-
-	label.Relabel(localMountPath, c.MountLabel, false)
 
 	// remount secrets ro
 	if err := mount.Mount("tmpfs", localMountPath, "tmpfs", "remount,ro,"+tmpfsOwnership); err != nil {
