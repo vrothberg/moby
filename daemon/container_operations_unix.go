@@ -168,7 +168,9 @@ func (daemon *Daemon) setupSecretDir(c *container.Container) (setupErr error) {
 
 	for _, s := range c.SecretReferences {
 		if c.SecretStore == nil {
-			return fmt.Errorf("secret store is not initialized")
+			// if secret store isn't initialized, we can skip this setup
+			// altogether
+			return nil
 		}
 
 		// TODO (ehazlett): use type switch when more are supported
