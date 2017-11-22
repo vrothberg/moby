@@ -83,6 +83,7 @@ func DefaultSpec() specs.Spec {
 			"/proc/timer_list",
 			"/proc/timer_stats",
 			"/proc/sched_debug",
+			"/proc/scsi",
 			"/sys/firmware",
 		},
 		ReadonlyPaths: []string{
