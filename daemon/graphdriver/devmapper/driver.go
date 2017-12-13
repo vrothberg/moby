@@ -221,7 +221,7 @@ func (d *Driver) Put(id string) error {
 	}
 	err := d.DeviceSet.UnmountDevice(id, mp)
 	if err != nil {
-		logrus.Errorf("devmapper: Error unmounting device %s: %s", id, err)
+		logrus.Errorf("devmapper: Error unmounting device %s: %v", id, err)
 	}
 	return err
 }
