@@ -319,6 +319,13 @@ func (s *imageRouter) getAuthConfigs(image string, r *http.Request, backward, se
 			authConfigs = make(map[string]types.AuthConfig)
 		}
 	}
+	// This happens when we get:
+	// X-Registry-Auth: bnVsbA==
+	// which means we get "null" which is decoded to a nil map
+	// and causes https://bugzilla.redhat.com/show_bug.cgi?id=1520211
+	if authConfigs == nil {
+		authConfigs = make(map[string]types.AuthConfig)
+	}
 	// maybe client just sends one auth config
 	// try to resolve just one auth config...
 	authConfig := types.AuthConfig{}
@@ -336,6 +343,13 @@ func (s *imageRouter) getAuthConfigs(image string, r *http.Request, backward, se
 				return nil, fmt.Errorf("Bad parameters and missing X-Registry-Auth: %v", err)
 			}
 		}
+	}
+	// This happens when we get:
+	// X-Registry-Auth: bnVsbA==
+	// which means we get "null" which is decoded to a nil map
+	// and causes https://bugzilla.redhat.com/show_bug.cgi?id=1520211
+	if authConfig == nil {
+		authConfig = types.AuthConfig{}
 	}
 
 	if len(authConfigs) == 0 {
