@@ -177,11 +177,27 @@ func (s *journald) drainJournal(logWatcher *logger.LogWatcher, config logger.Rea
 
 	// Walk the journal from here forward until we run out of new entries.
 drain:
-	for {
+	for processed := uint64(0); ; processed++ {
 		// If the output channel is full, stop here, so that we don't block indefinitely
 		// when we get to the point where we can output the message.
 		if len(logWatcher.Msg) >= cap(logWatcher.Msg) {
 			break
+		}
+		// If we're not keeping up with journald writing to the journal, some of the
+		// files between where we are and "now" may have been deleted since we started
+		// walking the set of entries.  If that's happened, the inotify descriptor in
+		// the journal handle will have pending deletion events.  Letting the journal
+		// library process them will close any that are already deleted, so that we'll
+		// skip over them and allow space that would have been reclaimed by deleting
+		// these files to actually be reclaimed.
+		if processed%1024 == 0 {
+			if status := C.sd_journal_process(j); status < 0 {
+				cerrstr := C.strerror(C.int(-status))
+				errstr := C.GoString(cerrstr)
+				fmtstr := "error %q while attempting to process journal events for container %q"
+				logrus.Errorf(fmtstr, errstr, s.vars["CONTAINER_ID_FULL"])
+				break
+			}
 		}
 		// Try not to send a given entry twice.
 		if oldCursor != nil {
