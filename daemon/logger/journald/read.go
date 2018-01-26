@@ -317,6 +317,19 @@ func (s *journald) readLogs(logWatcher *logger.LogWatcher, config logger.ReadCon
 		close(logWatcher.Msg)
 		return
 	}
+	// The journal library uses an inotify descriptor to notice when
+	// journal files are removed, but it isn't allocated until our first
+	// call to sd_journal_get_fd(), which means that it will not notice the
+	// removal of any files that happens after we open the journal and
+	// before the first time we try to read that descriptor.  Do it now,
+	// even though we don't need its value just yet, to try to make that
+	// window smaller.
+	rc = C.sd_journal_get_fd(j)
+	if rc < 0 {
+		logWatcher.Err <- fmt.Errorf("error opening journal inotify descriptor")
+		close(logWatcher.Msg)
+		return
+	}
 	// If we end up following the log, we can set the journal context
 	// pointer and the channel pointer to nil so that we won't close them
 	// here, potentially while the goroutine that uses them is still
