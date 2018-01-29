@@ -140,7 +140,9 @@ package journald
 //			/* The close notification pipe was closed. */
 //			return 0;
 //		}
-//		if (sd_journal_process(j) == SD_JOURNAL_APPEND) {
+//		switch (sd_journal_process(j)) {
+//		case SD_JOURNAL_APPEND:
+//		case SD_JOURNAL_INVALIDATE:
 //			/* Data, which we might care about, was appended. */
 //			return 1;
 //		}
