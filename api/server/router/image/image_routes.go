@@ -344,13 +344,6 @@ func (s *imageRouter) getAuthConfigs(image string, r *http.Request, backward, se
 			}
 		}
 	}
-	// This happens when we get:
-	// X-Registry-Auth: bnVsbA==
-	// which means we get "null" which is decoded to a nil map
-	// and causes https://bugzilla.redhat.com/show_bug.cgi?id=1520211
-	if authConfig == nil {
-		authConfig = types.AuthConfig{}
-	}
 
 	if len(authConfigs) == 0 {
 		var (
