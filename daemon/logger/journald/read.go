@@ -228,7 +228,7 @@ func (s *journald) drainJournal(logWatcher *logger.LogWatcher, config logger.Rea
 			}
 		}
 		// If the output channel is full, stop here, so that we don't block indefinitely
-		// waiting until we can output another message, when won't ever happen if the
+		// waiting until we can output another message, which won't ever happen if the
 		// client has already disconnected.
 		if len(logWatcher.Msg) >= cap(logWatcher.Msg) {
 			// Attempt to rewind the last-read cursor to the entry
