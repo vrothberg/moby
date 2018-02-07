@@ -177,43 +177,73 @@ func (s *journald) drainJournal(logWatcher *logger.LogWatcher, config logger.Rea
 	var stamp C.uint64_t
 	var priority, partial C.int
 
-	// Walk the journal from here forward until we run out of new entries.
-drain:
-	for processed := uint64(0); ; processed++ {
-		// If the output channel is full, stop here, so that we don't block indefinitely
-		// when we get to the point where we can output the message.
-		if len(logWatcher.Msg) >= cap(logWatcher.Msg) {
-			break
+	// Give the journal handle an opportunity to close any open descriptors
+	// for files that have been removed.
+	C.sd_journal_process(j)
+
+	// Seek to the location of the last entry that we sent.
+	if oldCursor != nil {
+		// We know which entry was read last, so try to go to that
+		// location.
+		rc := C.sd_journal_seek_cursor(j, oldCursor)
+		if rc != 0 {
+			return oldCursor
 		}
+		// Go forward to the first unsent message.
+		rc = C.sd_journal_next(j)
+		if rc < 0 {
+			return oldCursor
+		}
+		// We want to avoid sending a given entry twice (or more), so
+		// attempt to advance to the first unread entry in the journal
+		// so long as "this" one matches the last entry that we read.
+		for C.sd_journal_test_cursor(j, oldCursor) > 0 {
+			if C.sd_journal_next(j) <= 0 {
+				return oldCursor
+			}
+		}
+	}
+
+	// Walk the journal from here forward until we run out of new entries.
+	var sent uint64
+	for {
 		// If we're not keeping up with journald writing to the journal, some of the
 		// files between where we are and "now" may have been deleted since we started
 		// walking the set of entries.  If that's happened, the inotify descriptor in
-		// the journal handle will have pending deletion events.  Letting the journal
-		// library process them will close any that are already deleted, so that we'll
-		// skip over them and allow space that would have been reclaimed by deleting
-		// these files to actually be reclaimed.
-		if processed%1024 == 0 {
+		// the journal handle will have pending deletion events after we've been reading
+		// for a while.  Letting the journal library process them will close any that
+		// are already deleted, so that we'll skip over them and allow space that would
+		// have been reclaimed by deleting these files to actually be reclaimed.
+		if sent > 0 && sent%1024 == 0 {
 			if status := C.sd_journal_process(j); status < 0 {
 				cerrstr := C.strerror(C.int(-status))
 				errstr := C.GoString(cerrstr)
 				fmtstr := "error %q while attempting to process journal events for container %q"
 				logrus.Errorf(fmtstr, errstr, s.vars["CONTAINER_ID_FULL"])
+				// Attempt to rewind the last-read cursor to the
+				// entry that we last sent.
+				C.sd_journal_previous(j)
 				break
 			}
 		}
-		// Try not to send a given entry twice.
-		if oldCursor != nil {
-			for C.sd_journal_test_cursor(j, oldCursor) > 0 {
-				if C.sd_journal_next(j) <= 0 {
-					break drain
-				}
-			}
+		// If the output channel is full, stop here, so that we don't block indefinitely
+		// waiting until we can output another message, when won't ever happen if the
+		// client has already disconnected.
+		if len(logWatcher.Msg) >= cap(logWatcher.Msg) {
+			// Attempt to rewind the last-read cursor to the entry
+			// that we last sent.
+			C.sd_journal_previous(j)
+			break
 		}
-		// Read and send the logged message, if there is one to read.
+		// Read and send the current message, if there is one to read.
 		i := C.get_message(j, &msg, &length, &partial)
 		if i != -C.ENOENT && i != -C.EADDRNOTAVAIL {
 			// Read the entry's timestamp.
 			if C.sd_journal_get_realtime_usec(j, &stamp) != 0 {
+				// Attempt to rewind the last-read
+				// cursor to the entry that we last
+				// sent.
+				C.sd_journal_previous(j)
 				break
 			}
 			// Set up the time and text of the entry.
@@ -252,14 +282,20 @@ drain:
 				Attrs:     attrs,
 			}
 		}
-		// If we're at the end of the journal, we're done (for now).
+		// If we've hit the end of the journal, we're done (for now).
+		sent++
 		if C.sd_journal_next(j) <= 0 {
 			break
 		}
 	}
 
+	// If we didn't send any entries, just return the same cursor value.
+	if oldCursor != nil && sent == 0 {
+		return oldCursor
+	}
 	// free(NULL) is safe
 	C.free(unsafe.Pointer(oldCursor))
+	// Take note of which entry we most recently sent.
 	if C.sd_journal_get_cursor(j, &cursor) != 0 {
 		// ensure that we won't be freeing an address that's invalid
 		cursor = nil
