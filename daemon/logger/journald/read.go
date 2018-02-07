@@ -171,7 +171,7 @@ func (s *journald) Close() error {
 	return nil
 }
 
-func (s *journald) drainJournal(logWatcher *logger.LogWatcher, config logger.ReadConfig, j *C.sd_journal, oldCursor *C.char) *C.char {
+func (s *journald) drainJournal(logWatcher *logger.LogWatcher, config logger.ReadConfig, j *C.sd_journal, oldCursor *C.char) (*C.char, bool) {
 	var msg, data, cursor *C.char
 	var length C.size_t
 	var stamp C.uint64_t
@@ -187,25 +187,26 @@ func (s *journald) drainJournal(logWatcher *logger.LogWatcher, config logger.Rea
 		// location.
 		rc := C.sd_journal_seek_cursor(j, oldCursor)
 		if rc != 0 {
-			return oldCursor
+			return oldCursor, false
 		}
 		// Go forward to the first unsent message.
 		rc = C.sd_journal_next(j)
 		if rc < 0 {
-			return oldCursor
+			return oldCursor, false
 		}
 		// We want to avoid sending a given entry twice (or more), so
 		// attempt to advance to the first unread entry in the journal
 		// so long as "this" one matches the last entry that we read.
 		for C.sd_journal_test_cursor(j, oldCursor) > 0 {
 			if C.sd_journal_next(j) <= 0 {
-				return oldCursor
+				return oldCursor, false
 			}
 		}
 	}
 
 	// Walk the journal from here forward until we run out of new entries.
-	var sent uint64
+	sent := uint64(0)
+	eof := false
 	for {
 		// If we're not keeping up with journald writing to the journal, some of the
 		// files between where we are and "now" may have been deleted since we started
@@ -285,13 +286,14 @@ func (s *journald) drainJournal(logWatcher *logger.LogWatcher, config logger.Rea
 		// If we've hit the end of the journal, we're done (for now).
 		sent++
 		if C.sd_journal_next(j) <= 0 {
+			eof = true
 			break
 		}
 	}
 
 	// If we didn't send any entries, just return the same cursor value.
 	if oldCursor != nil && sent == 0 {
-		return oldCursor
+		return oldCursor, eof
 	}
 	// free(NULL) is safe
 	C.free(unsafe.Pointer(oldCursor))
@@ -300,7 +302,7 @@ func (s *journald) drainJournal(logWatcher *logger.LogWatcher, config logger.Rea
 		// ensure that we won't be freeing an address that's invalid
 		cursor = nil
 	}
-	return cursor
+	return cursor, eof
 }
 
 func (s *journald) followJournal(logWatcher *logger.LogWatcher, config logger.ReadConfig, j *C.sd_journal, pfd [2]C.int, cursor *C.char) *C.char {
@@ -315,7 +317,7 @@ func (s *journald) followJournal(logWatcher *logger.LogWatcher, config logger.Re
 		// or we hit an error.
 		status := C.wait_for_data_cancelable(j, pfd[0])
 		for status == 1 {
-			cursor = s.drainJournal(logWatcher, config, j, cursor)
+			cursor, _ = s.drainJournal(logWatcher, config, j, cursor)
 			status = C.wait_for_data_cancelable(j, pfd[0])
 		}
 		if status < 0 {
@@ -329,7 +331,7 @@ func (s *journald) followJournal(logWatcher *logger.LogWatcher, config logger.Re
 			// exited. Try to drain the journal one more time to pick up any last-minute journal entries.
 			// Note, this isn't fool-proof and there's no guarantee that we'll get all the trailing
 			// entries, but this is better than nothing, as it does yield entries more often than not.
-			cursor = s.drainJournal(logWatcher, config, j, cursor)
+			cursor, _ = s.drainJournal(logWatcher, config, j, cursor)
 		}
 		// Clean up.
 		C.close(pfd[0])
@@ -463,7 +465,7 @@ func (s *journald) readLogs(logWatcher *logger.LogWatcher, config logger.ReadCon
 			return
 		}
 	}
-	cursor = s.drainJournal(logWatcher, config, j, nil)
+	cursor, eof := s.drainJournal(logWatcher, config, j, nil)
 	if config.Follow {
 		// Allocate a descriptor for following the journal, if we'll
 		// need one.  Do it here so that we can report if it fails.
@@ -490,9 +492,9 @@ func (s *journald) readLogs(logWatcher *logger.LogWatcher, config logger.ReadCon
 		duration := 10 * time.Millisecond
 		timer := time.NewTimer(duration)
 	drainCatchup:
-		for stamp < initiated {
+		for !eof && stamp < initiated {
 			timer.Stop()
-			cursor = s.drainJournal(logWatcher, config, j, cursor)
+			cursor, eof = s.drainJournal(logWatcher, config, j, cursor)
 			if C.sd_journal_get_realtime_usec(j, &stamp) != 0 {
 				break drainCatchup
 			}
@@ -501,7 +503,6 @@ func (s *journald) readLogs(logWatcher *logger.LogWatcher, config logger.ReadCon
 			case <-logWatcher.WatchClose():
 				break drainCatchup
 			case <-timer.C:
-				break drainCatchup
 			}
 		}
 		timer.Stop()
