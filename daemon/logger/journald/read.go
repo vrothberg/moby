@@ -178,6 +178,11 @@ func (s *journald) drainJournal(logWatcher *logger.LogWatcher, config logger.Rea
 	// Walk the journal from here forward until we run out of new entries.
 drain:
 	for {
+		// If the output channel is full, stop here, so that we don't block indefinitely
+		// when we get to the point where we can output the message.
+		if len(logWatcher.Msg) >= cap(logWatcher.Msg) {
+			break
+		}
 		// Try not to send a given entry twice.
 		if oldCursor != nil {
 			for C.sd_journal_test_cursor(j, oldCursor) > 0 {
@@ -296,9 +301,15 @@ func (s *journald) readLogs(logWatcher *logger.LogWatcher, config logger.ReadCon
 	var j *C.sd_journal
 	var cmatch, cursor *C.char
 	var stamp C.uint64_t
+	var initiated C.uint64_t = 0xffffffffffffffff
 	var sinceUnixMicro uint64
 	var pipes [2]C.int
+	var ts C.struct_timespec
 
+	// Get the current time, so that we know when to stop in non-follow mode.
+	if C.clock_gettime(C.CLOCK_REALTIME, &ts) == 0 {
+		initiated = C.uint64_t(ts.tv_sec)*1000000000 + C.uint64_t(ts.tv_nsec)
+	}
 	// Get a handle to the journal.
 	rc := C.sd_journal_open(&j, C.int(0))
 	if rc != 0 {
@@ -403,6 +414,30 @@ func (s *journald) readLogs(logWatcher *logger.LogWatcher, config logger.ReadCon
 				following = true
 			}
 		}
+	} else {
+		// In case we stopped reading because the output channel was
+		// temporarily full, keep going until we cross the point where
+		// the timestamps on entries are later than when we started
+		// reading the log, to avoid trying to keep going until we
+		// hit the end of the journal when we just can't keep up.
+		duration := 10 * time.Millisecond
+		timer := time.NewTimer(duration)
+	drainCatchup:
+		for stamp < initiated {
+			timer.Stop()
+			cursor = s.drainJournal(logWatcher, config, j, cursor)
+			if C.sd_journal_get_realtime_usec(j, &stamp) != 0 {
+				break drainCatchup
+			}
+			timer.Reset(duration)
+			select {
+			case <-logWatcher.WatchClose():
+				break drainCatchup
+			case <-timer.C:
+				break drainCatchup
+			}
+		}
+		timer.Stop()
 	}
 
 	C.free(unsafe.Pointer(cursor))
