@@ -170,8 +170,8 @@ func (sb *sandbox) setExternalResolvers(content []byte, addrType int, checkLoopb
 			hostLoopback = dns.IsIPv4Localhost(ip)
 		}
 		sb.extDNS = append(sb.extDNS, extDNSEntry{
-			ipStr:        ip,
-			hostLoopback: hostLoopback,
+			IPStr:        ip,
+			HostLoopback: hostLoopback,
 		})
 	}
 }
