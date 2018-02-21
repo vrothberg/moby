@@ -80,6 +80,7 @@ func DefaultSpec() specs.Spec {
 		MaskedPaths: []string{
 			"/proc/acpi",
 			"/proc/kcore",
+			"/proc/keys",
 			"/proc/latency_stats",
 			"/proc/timer_list",
 			"/proc/timer_stats",
