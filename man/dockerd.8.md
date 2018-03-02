@@ -379,7 +379,8 @@ unix://[/path/to/socket] to use.
   remapping for the user namespace mappings used for contained processes.
   Specifying a user (or uid) and optionally a group (or gid) will cause the
   daemon to lookup the user and group's subordinate ID ranges for use as the
-  user namespace mappings for contained processes.
+  user namespace mappings for contained processes.  These user and groups must
+  be created in the subuid(5) or subgid(5) files prior to enablement.
 
 # SIGNATURE VERIFICATION
 
