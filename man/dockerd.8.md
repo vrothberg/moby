@@ -11,6 +11,7 @@ dockerd - Enable daemon mode
 [**--api-cors-header**=[=*API-CORS-HEADER*]]
 [**--authorization-plugin**[=*[]*]]
 [**-b**|**--bridge**[=*BRIDGE*]]
+[**--bind-mount-prefix[=*PREFIX*]]
 [**--bip**[=*BIP*]]
 [**--block-registry**[=*[]*]]
 [**--cgroup-parent**[=*[]*]]
@@ -132,6 +133,9 @@ $ sudo dockerd --add-runtime runc=runc --add-runtime custom=/usr/local/bin/my-ru
 **-b**, **--bridge**=""
   Attach containers to a pre\-existing network bridge; use 'none' to disable
   container networking
+
+**--bind-mount-prefix**=""
+  Specify a prefix to use for the source of the bind mounts.
 
 **--bip**=""
   Use the provided CIDR notation address for the dynamically created bridge

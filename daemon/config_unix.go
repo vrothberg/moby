@@ -38,6 +38,7 @@ type Config struct {
 	SeccompProfile       string                   `json:"seccomp-profile,omitempty"`
 	SigCheck             bool                     `json:"signature-verification"`
 	EnableSecrets        bool                     `json:"enable-secrets"`
+	BindMountPrefix      string                   `json:"bind-mount-prefix"`
 }
 
 // bridgeConfig stores all the bridge driver specific
@@ -93,6 +94,7 @@ func (config *Config) InstallFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&config.SeccompProfile, "seccomp-profile", "", "Path to seccomp profile")
 	flags.BoolVar(&config.SigCheck, "signature-verification", true, "Check image's signatures on pull")
 	flags.BoolVar(&config.EnableSecrets, "enable-secrets", true, "Enable Secrets")
+	flags.StringVar(&config.BindMountPrefix, "bind-mount-prefix", "", "Specify a prefix to prepend to the source of a bind mount")
 
 	config.attachExperimentalFlags(flags)
 }
