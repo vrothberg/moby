@@ -12,6 +12,8 @@ import (
 	"github.com/docker/docker/api/server/httputils"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/versions"
+	"github.com/docker/docker/pkg/ioutils"
+	"github.com/docker/docker/pkg/pools"
 	"golang.org/x/net/context"
 )
 
@@ -103,7 +105,9 @@ func (s *containerRouter) getContainersArchive(ctx context.Context, w http.Respo
 	}
 
 	w.Header().Set("Content-Type", "application/x-tar")
-	_, err = io.Copy(w, tarArchive)
+	output := ioutils.NewWriteFlusher(w)
+	defer output.Close()
+	_, err = pools.Copy(output, tarArchive)
 
 	return err
 }
