@@ -121,10 +121,10 @@ func CreateIDMappings(username, groupname string) ([]IDMap, []IDMap, error) {
 		return nil, nil, err
 	}
 	if len(subuidRanges) == 0 {
-		return nil, nil, fmt.Errorf("No subuid ranges found for user %q", username)
+		return nil, nil, fmt.Errorf("No subuid ranges found for user %q in %s", username, subuidFileName)
 	}
 	if len(subgidRanges) == 0 {
-		return nil, nil, fmt.Errorf("No subgid ranges found for group %q", groupname)
+		return nil, nil, fmt.Errorf("No subgid ranges found for group %q in %s", groupname, subgidFileName)
 	}
 
 	return createIDMap(subuidRanges), createIDMap(subgidRanges), nil
