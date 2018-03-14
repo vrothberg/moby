@@ -1,5 +1,5 @@
 % DOCKER(8) Docker User Manuals
-%  Shishir Mahajan
+% Shishir Mahajan
 % SEPTEMBER 2015
 # NAME
 dockerd - Enable daemon mode
