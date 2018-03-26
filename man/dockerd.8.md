@@ -374,12 +374,13 @@ unix://[/path/to/socket] to use.
   Path to the userland proxy binary.
 
 **--userns-remap**=*default*|*uid:gid*|*user:group*|*user*|*uid*
-  Enable user namespaces for containers on the daemon. Specifying "default"
-  will cause a new user and group to be created to handle UID and GID range
-  remapping for the user namespace mappings used for contained processes.
-  Specifying a user (or uid) and optionally a group (or gid) will cause the
+  Enable user namespaces for containers on the daemon. Specifying
+  a user (or uid) and optionally a group (or gid) will cause the
   daemon to lookup the user and group's subordinate ID ranges for use as the
-  user namespace mappings for contained processes.
+  user namespace mappings for contained processes. Specifying "default"
+  will cause a "dockremap" user and group to be created if not already present.
+  The "dockremap" user and group, or the specified uid, gid, user or group must
+  be created in the subuid(5) and subgid(5) files prior to enablement.
 
 # SIGNATURE VERIFICATION
 
