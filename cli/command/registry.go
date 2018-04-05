@@ -105,10 +105,6 @@ func ConfigureAuth(cli *DockerCli, flUser, flPassword, serverAddress string, isD
 		cli.in = NewInStream(os.Stdin)
 	}
 
-	if !isDefaultRegistry {
-		serverAddress = registry.ConvertToHostname(serverAddress)
-	}
-
 	authconfig, err := cli.CredentialsStore(serverAddress).Get(serverAddress)
 	if err != nil {
 		return authconfig, err
