@@ -9,6 +9,7 @@ import (
 
 	mounttypes "github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/pkg/idtools"
+	"github.com/docker/docker/pkg/symlink"
 	"github.com/docker/docker/pkg/stringid"
 	"github.com/opencontainers/runc/libcontainer/label"
 	"github.com/pkg/errors"
@@ -124,23 +125,28 @@ type MountPoint struct {
 
 // Setup sets up a mount point by either mounting the volume if it is
 // configured, or creating the source directory if supplied.
-func (m *MountPoint) Setup(mountLabel string, rootUID, rootGID int) (path string, err error) {
+func (m *MountPoint) Setup(prefix, mountLabel string, rootUID, rootGID int) (path string, err error) {
+	symlinkRoot := prefix
+	if symlinkRoot == "" {
+		symlinkRoot = "/"
+	}
+	sourcePath, err := symlink.FollowSymlinkInScope(filepath.Join(prefix, m.Source), symlinkRoot)
+	if err != nil {
+		path = ""
+		err = errors.Wrapf(err, "error evaluating symlink from mount source '%s'", m.Source)
+		return
+	}
+
 	defer func() {
 		if err == nil {
 			if label.RelabelNeeded(m.Mode) {
-				sourcePath, err := filepath.EvalSymlinks(m.Source)
-				if err != nil {
-					path = ""
-					err = errors.Wrapf(err, "error evaluating symlink from mount source '%s'", m.Source)
-					return
-				}
 				err = label.Relabel(sourcePath, mountLabel, label.IsShared(m.Mode))
 				if err == syscall.ENOTSUP {
 					err = nil
 				}
 				if err != nil {
 					path = ""
-					err = errors.Wrapf(err, "error setting label on mount source '%s'", m.Source)
+					err = errors.Wrapf(err, "error setting label on mount source '%s'", sourcePath)
 					return
 				}
 			}
@@ -162,19 +168,19 @@ func (m *MountPoint) Setup(mountLabel string, rootUID, rootGID int) (path string
 	if len(m.Source) == 0 {
 		return "", fmt.Errorf("Unable to setup mount point, neither source nor volume defined")
 	}
-	// system.MkdirAll() produces an error if m.Source exists and is a file (not a directory),
+	// system.MkdirAll() produces an error if source exists and is a file (not a directory),
 	if m.Type == mounttypes.TypeBind {
-		// idtools.MkdirAllNewAs() produces an error if m.Source exists and is a file (not a directory)
+		// idtools.MkdirAllNewAs() produces an error if source exists and is a file (not a directory)
 		// also, makes sure that if the directory is created, the correct remapped rootUID/rootGID will own it
-		if err := idtools.MkdirAllNewAs(m.Source, 0755, rootUID, rootGID); err != nil {
+		if err := idtools.MkdirAllNewAs(sourcePath, 0755, rootUID, rootGID); err != nil {
 			if perr, ok := err.(*os.PathError); ok {
 				if perr.Err != syscall.ENOTDIR {
-					return "", errors.Wrapf(err, "error while creating mount source path '%s'", m.Source)
+					return "", errors.Wrapf(err, "error while creating mount source path '%s'", sourcePath)
 				}
 			}
 		}
 	}
-	return m.Source, nil
+	return sourcePath, nil
 }
 
 // Path returns the path of a volume in a mount point.
