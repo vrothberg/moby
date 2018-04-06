@@ -43,7 +43,7 @@ func (daemon *Daemon) setupMounts(c *container.Container) ([]container.Mount, er
 			return nil, err
 		}
 		rootUID, rootGID := daemon.GetRemappedUIDGID()
-		path, err := m.Setup(c.MountLabel, rootUID, rootGID)
+		path, err := m.Setup(daemon.configStore.BindMountPrefix, c.MountLabel, rootUID, rootGID)
 		if err != nil {
 			return nil, err
 		}
