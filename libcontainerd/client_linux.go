@@ -507,11 +507,9 @@ func (clnt *client) Restore(containerID string, attachStdio StdioCallback, optio
 		if err := clnt.restore(cont, ev, attachStdio, options...); err != nil {
 			logrus.Errorf("libcontainerd: error restoring %s: %v", containerID, err)
 		}
-		return nil
 	}
 
 	// Kill the container if liveRestore == false
-	w := clnt.getOrCreateExitNotifier(containerID)
 	clnt.lock(cont.Id)
 	container := clnt.newContainer(cont.BundlePath)
 	container.systemPid = systemPid(cont)
@@ -519,6 +517,11 @@ func (clnt *client) Restore(containerID string, attachStdio StdioCallback, optio
 	clnt.unlock(cont.Id)
 
 	container.discardFifos()
+
+	if clnt.liveRestore {
+		return nil
+	}
+	w := clnt.getOrCreateExitNotifier(containerID)
 
 	if err := clnt.Signal(containerID, int(syscall.SIGTERM)); err != nil {
 		logrus.Errorf("libcontainerd: error sending sigterm to %v: %v", containerID, err)
