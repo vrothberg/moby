@@ -165,6 +165,10 @@ func (r *remote) handleConnectionChange() {
 			if transientFailureCount >= maxConnectionRetryCount {
 				transientFailureCount = 0
 				if utils.IsProcessAlive(r.daemonPid) {
+					logrus.Infof("killing and restarting containerd")
+					// Try to get a stack trace
+					syscall.Kill(r.daemonPid, syscall.SIGUSR1)
+					<-time.After(100 * time.Millisecond)
 					utils.KillProcess(r.daemonPid)
 				}
 				<-r.daemonWaitCh
