@@ -9,8 +9,8 @@ import (
 
 	mounttypes "github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/pkg/idtools"
-	"github.com/docker/docker/pkg/stringid"
 	"github.com/docker/docker/pkg/symlink"
+	"github.com/docker/docker/pkg/stringid"
 	"github.com/opencontainers/runc/libcontainer/label"
 	"github.com/pkg/errors"
 )
@@ -126,16 +126,15 @@ type MountPoint struct {
 // Setup sets up a mount point by either mounting the volume if it is
 // configured, or creating the source directory if supplied.
 func (m *MountPoint) Setup(prefix, mountLabel string, rootUID, rootGID int) (path string, err error) {
-	var sourcePath string
-	if prefix == "" {
-		sourcePath = m.Source
-	} else {
-		sourcePath, err = symlink.FollowSymlinkInScope(filepath.Join(prefix, m.Source), prefix)
-		if err != nil {
-			path = ""
-			err = errors.Wrapf(err, "error evaluating symlink from mount source '%s'", m.Source)
-			return
-		}
+	symlinkRoot := prefix
+	if symlinkRoot == "" {
+		symlinkRoot = "/"
+	}
+	sourcePath, err := symlink.FollowSymlinkInScope(filepath.Join(prefix, m.Source), symlinkRoot)
+	if err != nil {
+		path = ""
+		err = errors.Wrapf(err, "error evaluating symlink from mount source '%s'", m.Source)
+		return
 	}
 
 	defer func() {
