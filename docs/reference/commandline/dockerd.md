@@ -25,7 +25,6 @@ Options:
       --add-runtime value                     Register an additional OCI compatible runtime (default [])
       --api-cors-header string                Set CORS headers in the Engine API
       --authorization-plugin value            Authorization plugins to load (default [])
-      --bind-mount-prefix                     Specify a prefix to prepend to the source of a bind mount
       --bip string                            Specify network bridge IP
   -b, --bridge string                         Attach containers to a network bridge
       --cgroup-parent string                  Set parent cgroup for all containers
