@@ -128,6 +128,11 @@ func (store *store) addReference(ref Named, id digest.Digest, force bool) error 
 	oldID, exists := repository[refStr]
 
 	if exists {
+		if oldID == id {
+			// Nothing to do. The caller may have checked for this using store.Get in advance, but store.mu was unlocked in the meantime, so this can legitimately happen nevertheless.
+			return nil
+		}
+
 		// force only works for tags
 		if digested, isDigest := ref.(Canonical); isDigest {
 			return fmt.Errorf("Cannot overwrite digest %s", digested.Digest().String())
