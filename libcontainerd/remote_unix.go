@@ -33,7 +33,6 @@ import (
 )
 
 const (
-	maxConnectionRetryCount      = 3
 	containerdHealthCheckTimeout = 3 * time.Second
 	containerdShutdownTimeout    = 15 * time.Second
 	containerdBinary             = "docker-containerd"
@@ -45,22 +44,23 @@ const (
 
 type remote struct {
 	sync.RWMutex
-	apiClient            containerd.APIClient
-	daemonPid            int
-	stateDir             string
-	rpcAddr              string
-	startDaemon          bool
-	closeManually        bool
-	debugLog             bool
-	rpcConn              *grpc.ClientConn
-	clients              []*client
-	eventTsPath          string
-	runtime              string
-	runtimeArgs          []string
-	daemonWaitCh         chan struct{}
-	liveRestore          bool
-	oomScore             int
-	restoreFromTimestamp *timestamp.Timestamp
+	apiClient             containerd.APIClient
+	daemonPid             int
+	stateDir              string
+	rpcAddr               string
+	startDaemon           bool
+	closeManually         bool
+	debugLog              bool
+	rpcConn               *grpc.ClientConn
+	clients               []*client
+	eventTsPath           string
+	runtime               string
+	runtimeArgs           []string
+	daemonWaitCh          chan struct{}
+	liveRestore           bool
+	oomScore              int
+	maxHealthCheckRetries int
+	restoreFromTimestamp  *timestamp.Timestamp
 }
 
 // New creates a fresh instance of libcontainerd remote.
@@ -139,6 +139,8 @@ func (r *remote) UpdateOptions(options ...RemoteOption) error {
 func (r *remote) handleConnectionChange() {
 	var transientFailureCount = 0
 
+	logrus.Debugf("libcontainerd: maximum number of retries for containerd health check is %d", r.maxHealthCheckRetries)
+
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
 	healthClient := grpc_health_v1.NewHealthClient(r.rpcConn)
@@ -162,7 +164,7 @@ func (r *remote) handleConnectionChange() {
 			// all other errors are transient
 			// Reset state to be notified of next failure
 			transientFailureCount++
-			if transientFailureCount >= maxConnectionRetryCount {
+			if transientFailureCount >= r.maxHealthCheckRetries {
 				transientFailureCount = 0
 				if utils.IsProcessAlive(r.daemonPid) {
 					logrus.Infof("killing and restarting containerd")
@@ -552,4 +554,20 @@ func (o oomScore) Apply(r Remote) error {
 		return nil
 	}
 	return fmt.Errorf("WithOOMScore option not supported for this remote")
+}
+
+// WithMaxHealthCheckRetries defines the maximum number of consecutive failed 'HealthCheckRequest'
+// before handleConnectionChange() forcibly kills and restarts containerd.
+func WithMaxHealthCheckRetries(cnt int) RemoteOption {
+	return retryCnt(cnt)
+}
+
+type retryCnt int
+
+func (cnt retryCnt) Apply(r Remote) error {
+	if remote, ok := r.(*remote); ok {
+		remote.maxHealthCheckRetries = int(cnt)
+		return nil
+	}
+	return fmt.Errorf("WithMaxHealthCheckRetries option not supported for this remote")
 }

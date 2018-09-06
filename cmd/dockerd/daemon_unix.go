@@ -62,6 +62,7 @@ func (cli *DaemonCli) getPlatformRemoteOptions() []libcontainerd.RemoteOption {
 	opts := []libcontainerd.RemoteOption{
 		libcontainerd.WithDebugLog(cli.Config.Debug),
 		libcontainerd.WithOOMScore(cli.Config.OOMScoreAdjust),
+		libcontainerd.WithMaxHealthCheckRetries(cli.Config.MaxHealthCheckRetries),
 	}
 	if cli.Config.ContainerdAddr != "" {
 		opts = append(opts, libcontainerd.WithRemoteAddr(cli.Config.ContainerdAddr))

@@ -26,18 +26,19 @@ type Config struct {
 	CommonUnixConfig
 
 	// Fields below here are platform specific.
-	CgroupParent         string                   `json:"cgroup-parent,omitempty"`
-	EnableSelinuxSupport bool                     `json:"selinux-enabled,omitempty"`
-	RemappedRoot         string                   `json:"userns-remap,omitempty"`
-	Ulimits              map[string]*units.Ulimit `json:"default-ulimits,omitempty"`
-	CPURealtimePeriod    int64                    `json:"cpu-rt-period,omitempty"`
-	CPURealtimeRuntime   int64                    `json:"cpu-rt-runtime,omitempty"`
-	OOMScoreAdjust       int                      `json:"oom-score-adjust,omitempty"`
-	Init                 bool                     `json:"init,omitempty"`
-	InitPath             string                   `json:"init-path,omitempty"`
-	SeccompProfile       string                   `json:"seccomp-profile,omitempty"`
-	SigCheck             bool                     `json:"signature-verification"`
-	EnableSecrets        bool                     `json:"enable-secrets"`
+	CgroupParent          string                   `json:"cgroup-parent,omitempty"`
+	EnableSelinuxSupport  bool                     `json:"selinux-enabled,omitempty"`
+	RemappedRoot          string                   `json:"userns-remap,omitempty"`
+	Ulimits               map[string]*units.Ulimit `json:"default-ulimits,omitempty"`
+	CPURealtimePeriod     int64                    `json:"cpu-rt-period,omitempty"`
+	CPURealtimeRuntime    int64                    `json:"cpu-rt-runtime,omitempty"`
+	OOMScoreAdjust        int                      `json:"oom-score-adjust,omitempty"`
+	MaxHealthCheckRetries int                      `json:"max-health-check-retries,omitempty"`
+	Init                  bool                     `json:"init,omitempty"`
+	InitPath              string                   `json:"init-path,omitempty"`
+	SeccompProfile        string                   `json:"seccomp-profile,omitempty"`
+	SigCheck              bool                     `json:"signature-verification"`
+	EnableSecrets         bool                     `json:"enable-secrets"`
 }
 
 // bridgeConfig stores all the bridge driver specific
@@ -86,6 +87,7 @@ func (config *Config) InstallFlags(flags *pflag.FlagSet) {
 	flags.StringVar(&config.ContainerdAddr, "containerd", "", "Path to containerd socket")
 	flags.BoolVar(&config.LiveRestoreEnabled, "live-restore", false, "Enable live restore of docker when containers are still running")
 	flags.IntVar(&config.OOMScoreAdjust, "oom-score-adjust", -500, "Set the oom_score_adj for the daemon")
+	flags.IntVar(&config.MaxHealthCheckRetries, "max-health-check-retries", 3, "Set the maximum number of health check retries before forced containerd restart")
 	flags.BoolVar(&config.Init, "init", false, "Run an init in the container to forward signals and reap processes")
 	flags.StringVar(&config.InitPath, "init-path", "", "Path to the docker-init binary")
 	flags.Int64Var(&config.CPURealtimePeriod, "cpu-rt-period", 0, "Limit the CPU real-time period in microseconds")
