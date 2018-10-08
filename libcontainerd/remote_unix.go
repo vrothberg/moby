@@ -151,6 +151,8 @@ func (r *remote) handleConnectionChange() {
 		_, err := healthClient.Check(ctx, &grpc_health_v1.HealthCheckRequest{})
 		cancel()
 		if err == nil {
+			// https://bugzilla.redhat.com/show_bug.cgi?id=1636259
+			transientFailureCount = 0
 			continue
 		}
 
