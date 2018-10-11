@@ -229,6 +229,8 @@ func (cli *DaemonCli) start(opts daemonOptions) (err error) {
 	api := apiserver.New(serverConfig)
 	cli.api = api
 
+	var hosts []string
+
 	for i := 0; i < len(cli.Config.Hosts); i++ {
 		var err error
 		if cli.Config.Hosts[i], err = dopts.ParseHost(cli.Config.TLS, cli.Config.Hosts[i]); err != nil {
@@ -260,6 +262,7 @@ func (cli *DaemonCli) start(opts daemonOptions) (err error) {
 			}
 		}
 		logrus.Debugf("Listener created for HTTP on %s (%s)", proto, addr)
+		hosts = append(hosts, protoAddrParts[1])
 		api.Accept(addr, ls...)
 	}
 
@@ -284,6 +287,8 @@ func (cli *DaemonCli) start(opts daemonOptions) (err error) {
 	if err != nil {
 		return fmt.Errorf("Error starting daemon: %v", err)
 	}
+
+	d.StoreHosts(hosts)
 
 	if cli.Config.MetricsAddress != "" {
 		if !d.HasExperimental() {
