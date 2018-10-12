@@ -10,6 +10,12 @@ import (
 	fopts "github.com/docker/docker/opts"
 )
 
+// NamedOption is an interface that list and map options
+// with names implement.
+type NamedOption interface {
+	Name() string
+}
+
 // ValidateAttach validates that the specified string is a valid attach option.
 func ValidateAttach(val string) (string, error) {
 	s := strings.ToLower(val)
