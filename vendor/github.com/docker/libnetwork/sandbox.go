@@ -619,6 +619,10 @@ func (sb *sandbox) SetKey(basePath string) error {
 	}
 
 	sb.Lock()
+	if sb.inDelete {
+		sb.Unlock()
+		return types.ForbiddenErrorf("failed to SetKey: sandbox %q delete in progress", sb.id)
+	}
 	oldosSbox := sb.osSbox
 	sb.Unlock()
 
@@ -637,13 +641,6 @@ func (sb *sandbox) SetKey(basePath string) error {
 	sb.Lock()
 	sb.osSbox = osSbox
 	sb.Unlock()
-	defer func() {
-		if err != nil {
-			sb.Lock()
-			sb.osSbox = nil
-			sb.Unlock()
-		}
-	}()
 
 	// If the resolver was setup before stop it and set it up in the
 	// new osl sandbox.
