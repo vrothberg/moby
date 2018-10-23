@@ -45,7 +45,9 @@ func (daemon *Daemon) StateChanged(id string, e libcontainerd.StateInfo) error {
 			defer daemon.autoRemove(c)
 		}
 
-		daemon.updateHealthMonitor(c)
+		// cancel healthcheck here, they will be automatically
+		// restarted if/when the container is started again
+		daemon.stopHealthchecks(c)
 		attributes := map[string]string{
 			"exitCode": strconv.Itoa(int(e.ExitCode)),
 		}
