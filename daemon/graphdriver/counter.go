@@ -67,5 +67,5 @@ func (c *RefCounter) Decrement(path string) int {
 		delete(c.counts, path)
 	}
 	c.mu.Unlock()
-	return m.count
+	return count
 }
