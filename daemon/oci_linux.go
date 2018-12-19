@@ -66,9 +66,6 @@ func setResources(s *specs.Spec, r containertypes.Resources) error {
 			ThrottleWriteIOPSDevice: writeIOpsDevice,
 		},
 		DisableOOMKiller: r.OomKillDisable,
-		Pids: &specs.Pids{
-			Limit: &r.PidsLimit,
-		},
 	}
 
 	if s.Linux.Resources != nil && len(s.Linux.Resources.Devices) > 0 {
@@ -644,6 +641,12 @@ func (daemon *Daemon) createSpec(c *container.Container) (*specs.Spec, error) {
 
 	if err := setResources(&s, c.HostConfig.Resources); err != nil {
 		return nil, fmt.Errorf("linux runtime spec resources: %v", err)
+	}
+	s.Linux.Resources.Pids = &specs.Pids{
+		Limit: &daemon.configStore.PidsLimit,
+	}
+	if c.HostConfig.Resources.PidsLimit != 0 {
+		s.Linux.Resources.Pids.Limit = &c.HostConfig.Resources.PidsLimit
 	}
 	s.Linux.Resources.OOMScoreAdj = &c.HostConfig.OomScoreAdj
 	s.Linux.Sysctl = c.HostConfig.Sysctls
