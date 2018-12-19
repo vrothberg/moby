@@ -31,6 +31,7 @@ import (
 	"github.com/docker/docker/pkg/mount"
 	"github.com/docker/docker/plugin"
 	"github.com/docker/libnetwork/cluster"
+
 	// register graph drivers
 	_ "github.com/docker/docker/daemon/graphdriver/register"
 	dmetadata "github.com/docker/docker/distribution/metadata"
@@ -694,6 +695,10 @@ func NewDaemon(config *Config, registryService registry.Service, containerdRemot
 	// on Linux.
 	if runtime.GOOS == "linux" && !sysInfo.CgroupDevicesEnabled {
 		return nil, fmt.Errorf("Devices cgroup isn't mounted")
+	}
+	if d.configStore.PidsLimit != 0 && !sysInfo.PidsLimit {
+		logrus.Warn("Your kernel does not support pids limit capabilities or the cgroup is not mounted. PIDs limit discarded.")
+		d.configStore.PidsLimit = 0
 	}
 
 	d.ID = trustKey.PublicKey().KeyID()
