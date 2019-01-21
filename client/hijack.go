@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bufio"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -74,9 +75,47 @@ func (cli *Client) postHijacked(ctx context.Context, path string, query url.Valu
 	// Server hijacks the connection, error 'connection closed' expected
 	_, err = clientconn.Do(req)
 
-	rwc, br := clientconn.Hijack()
+	c, br := clientconn.Hijack()
+	if br.Buffered() > 0 {
+		// If there is buffered content, wrap the connection.  We return an
+		// object that implements CloseWrite iff the underlying connection
+		// implements it.
+		if _, ok := c.(types.CloseWriter); ok {
+			c = &hijackedConnCloseWriter{c, br}
+		} else {
+			c = &hijackedConn{c, br}
+		}
+	} else {
+		br.Reset(nil)
+	}
 
-	return types.HijackedResponse{Conn: rwc, Reader: br}, err
+	return types.HijackedResponse{Conn: c, Reader: bufio.NewReader(c)}, err
+}
+
+// hijackedConn wraps a net.Conn and is returned by setupHijackConn in the case
+// that a) there was already buffered data in the http layer when Hijack() was
+// called, and b) the underlying net.Conn does *not* implement CloseWrite().
+// hijackedConn does not implement CloseWrite() either.
+type hijackedConn struct {
+	net.Conn
+	r *bufio.Reader
+}
+
+func (c *hijackedConn) Read(b []byte) (int, error) {
+	return c.r.Read(b)
+}
+
+// hijackedConnCloseWriter is a hijackedConn which additionally implements
+// CloseWrite().  It is returned by setupHijackConn in the case that a) there
+// was already buffered data in the http layer when Hijack() was called, and b)
+// the underlying net.Conn *does* implement CloseWrite().
+type hijackedConnCloseWriter hijackedConn
+
+var _ types.CloseWriter = &hijackedConnCloseWriter{}
+
+func (c *hijackedConnCloseWriter) CloseWrite() error {
+	conn := c.Conn.(types.CloseWriter)
+	return conn.CloseWrite()
 }
 
 func tlsDial(network, addr string, config *tls.Config) (net.Conn, error) {
