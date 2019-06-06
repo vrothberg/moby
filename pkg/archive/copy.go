@@ -121,6 +121,20 @@ func TarResourceRebase(sourcePath, rebaseName string) (content io.ReadCloser, er
 	})
 }
 
+// TarResourceRebaseOpts does not preform the Tar, but instead just creates the rebase
+// parameters to be sent to TarWithOptions (the TarOptions struct)
+func TarResourceRebaseOpts(sourceBase string, rebaseName string) *TarOptions {
+	filter := []string{sourceBase}
+	return &TarOptions{
+		Compression:      Uncompressed,
+		IncludeFiles:     filter,
+		IncludeSourceDir: true,
+		RebaseNames: map[string]string{
+			sourceBase: rebaseName,
+		},
+	}
+}
+
 // CopyInfo holds basic info about the source
 // or destination path of a copy operation.
 type CopyInfo struct {
