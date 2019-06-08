@@ -7,6 +7,7 @@ import (
 
 	"github.com/docker/docker/container"
 	"github.com/docker/docker/pkg/archive"
+	"github.com/docker/docker/pkg/chrootarchive"
 	"github.com/docker/docker/pkg/ioutils"
 )
 
@@ -60,11 +61,11 @@ func (daemon *Daemon) containerExport(container *container.Container) (arch io.R
 	}
 
 	uidMaps, gidMaps := daemon.GetUIDGIDMaps()
-	archive, err := archive.TarWithOptions(container.BaseFS, &archive.TarOptions{
+	archive, err := chrootarchive.Tar(container.BaseFS, &archive.TarOptions{
 		Compression: archive.Uncompressed,
 		UIDMaps:     uidMaps,
 		GIDMaps:     gidMaps,
-	})
+	}, container.BaseFS)
 	if err != nil {
 		rwLayer.Unmount()
 		return nil, err

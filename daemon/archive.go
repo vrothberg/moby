@@ -271,7 +271,7 @@ func (daemon *Daemon) containerExtractToDir(container *container.Container, path
 		}
 	}
 
-	if err := chrootarchive.Untar(content, resolvedPath, options); err != nil {
+	if err := chrootarchive.UntarWithRoot(content, resolvedPath, options, absPath); err != nil {
 		return err
 	}
 
