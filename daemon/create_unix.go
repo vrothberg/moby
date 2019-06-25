@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"syscall"
 
 	"github.com/Sirupsen/logrus"
 	containertypes "github.com/docker/docker/api/types/container"
@@ -51,7 +52,7 @@ func (daemon *Daemon) createContainerPlatformSpecificSettings(container *contain
 			return err
 		}
 
-		if err := label.Relabel(v.Path(), container.MountLabel, true); err != nil {
+		if err := label.Relabel(v.Path(), container.MountLabel, true); err != nil && err != syscall.ENOTSUP {
 			return err
 		}
 
