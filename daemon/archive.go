@@ -152,7 +152,7 @@ func (daemon *Daemon) containerArchivePath(container *container.Container, path 
 	// container ID.
 	opts := archive.TarResourceRebaseOpts(resolvedPath, filepath.Base(absPath))
 
-	data, err := chrootarchive.Tar(resolvedPath, opts, filepath.Base(absPath))
+	data, err := chrootarchive.Tar(resolvedPath, opts, filepath.Dir(absPath))
 	if err != nil {
 		return nil, nil, err
 	}
