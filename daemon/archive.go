@@ -2,7 +2,6 @@ package daemon
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -151,35 +150,7 @@ func (daemon *Daemon) containerArchivePath(container *container.Container, path 
 	// also catches the case when the root directory of the container is
 	// requested: we want the archive entries to start with "/" and not the
 	// container ID.
-	opts := archive.TarResourceRebaseOpts(resolvedPath, filepath.Base(absPath))
-
-	// Get the directory where the file lives in the container.
-	ctrDir := filepath.Join(container.BaseFS, filepath.Dir(absPath))
-
-	// Evaluate any symlink that occurs and point to the actual dir.
-	// EvalSymlinks will look for the target on the host and will fail
-	// if not found.  Ignore errors and assume it's OK in the container.
-	resolvedCtrDir, _ := filepath.EvalSymlinks(ctrDir)
-
-	fileInfo, err := os.Lstat(ctrDir)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error retrieving fileinfo for %q", ctrDir)
-	}
-	// If resolvedCtrDir was a symlink, it will have the resolved directory from
-	// the containers root.  i.e. `ln -s /tmp /test` in the container and
-	// resolvedCtrDir would have `/tmp` in it at this point.  Add it back
-	// to the container.Basefs to get the full container target directory
-	// on the host.
-	if fileInfo.Mode()&os.ModeSymlink != 0 {
-		resolvedCtrDir = filepath.Join(container.BaseFS, resolvedCtrDir)
-	}
-
-	// Make sure we didn't leak outside of container.
-	if !strings.HasPrefix(resolvedCtrDir, container.BaseFS ) {
-		return nil, nil, fmt.Errorf("error targeted directory is not within the container %s", resolvedCtrDir)
-	}
-
-	data, err := chrootarchive.Tar(resolvedPath, opts, resolvedCtrDir)
+	data, err := archive.TarResourceRebase(resolvedPath, filepath.Base(absPath))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -298,7 +269,7 @@ func (daemon *Daemon) containerExtractToDir(container *container.Container, path
 		}
 	}
 
-	if err := chrootarchive.UntarWithRoot(content, resolvedPath, options, resolvedPath); err != nil {
+	if err := chrootarchive.UntarWithRoot(content, resolvedPath, options, absPath); err != nil {
 		return err
 	}
 
