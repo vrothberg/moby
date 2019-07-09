@@ -141,6 +141,9 @@ func (daemon *Daemon) containerArchivePath(container *container.Container, path 
 	if err != nil {
 		return nil, nil, err
 	}
+	if stat.LinkTarget != "" {
+		resolvedPath = stat.LinkTarget
+	}
 
 	// We need to rebase the archive entries if the last element of the
 	// resolved path was a symlink that was evaluated and is now different
@@ -269,7 +272,7 @@ func (daemon *Daemon) containerExtractToDir(container *container.Container, path
 		}
 	}
 
-	if err := chrootarchive.UntarWithRoot(content, resolvedPath, options, absPath); err != nil {
+	if err := chrootarchive.UntarWithRoot(content, absPath, options, container.BaseFS); err != nil {
 		return err
 	}
 
