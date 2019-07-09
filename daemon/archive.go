@@ -150,9 +150,7 @@ func (daemon *Daemon) containerArchivePath(container *container.Container, path 
 	// also catches the case when the root directory of the container is
 	// requested: we want the archive entries to start with "/" and not the
 	// container ID.
-	opts := archive.TarResourceRebaseOpts(resolvedPath, filepath.Base(absPath))
-
-	data, err := chrootarchive.Tar(resolvedPath, opts, filepath.Dir(absPath))
+	data, err := archive.TarResourceRebase(resolvedPath, filepath.Base(absPath))
 	if err != nil {
 		return nil, nil, err
 	}
