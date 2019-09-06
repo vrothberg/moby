@@ -65,6 +65,10 @@ func cloneArgs(remoteURL *url.URL, root string) []string {
 func checkoutGit(fragment, root string) (string, error) {
 	refAndDir := strings.SplitN(fragment, ":", 2)
 
+	if strings.HasPrefix(refAndDir[0], "-") {
+		return "", fmt.Errorf("invalid refspec: %s", refAndDir[0])
+	}
+
 	if len(refAndDir[0]) != 0 {
 		if output, err := gitWithinDir(root, "checkout", refAndDir[0]); err != nil {
 			return "", fmt.Errorf("Error trying to use git: %s (%s)", err, output)
