@@ -144,7 +144,6 @@ func (daemon *Daemon) Kill(container *container.Container) error {
 		return err
 	}
 
-	container.WaitStop(-1 * time.Second)
 	return nil
 }
 

@@ -793,7 +793,6 @@ func (daemon *Daemon) shutdownContainer(c *container.Container) error {
 			if err := daemon.kill(c, int(sig)); err != nil {
 				logrus.Errorf("Failed to SIGKILL container %s", c.ID)
 			}
-			c.WaitStop(-1 * time.Second)
 			return err
 		}
 	}
@@ -802,7 +801,6 @@ func (daemon *Daemon) shutdownContainer(c *container.Container) error {
 		return fmt.Errorf("Failed to stop container %s with error: %v", c.ID, err)
 	}
 
-	c.WaitStop(-1 * time.Second)
 	return nil
 }
 

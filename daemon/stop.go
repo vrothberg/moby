@@ -73,7 +73,6 @@ func (daemon *Daemon) containerStop(container *container.Container, seconds int)
 		logrus.Infof("Container %v failed to exit within %d seconds of signal %d - using the force", container.ID, seconds, stopSignal)
 		// 3. If it doesn't, then send SIGKILL
 		if err := daemon.Kill(container); err != nil {
-			container.WaitStop(-1 * time.Second)
 			logrus.Warn(err) // Don't return error because we only care that container is stopped, not what function stopped it
 		}
 	}
