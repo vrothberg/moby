@@ -188,9 +188,9 @@ func getSearchResultsCmpFunc(withIndex bool) by {
 	return less
 }
 
-func (s *DefaultService) searchTerm(term string, limit int, authConfigs map[string]types.AuthConfig, userAgent string, headers map[string][]string, noIndex bool, outs *[]registrytypes.SearchResultExt) error {
+func (s *DefaultService) searchTerm(term string, limit int, authConfigs map[string]types.AuthConfig, userAgent string, headers map[string][]string, noIndex bool, outs []registrytypes.SearchResultExt) ([]registrytypes.SearchResultExt, error) {
 	if err := validateNoScheme(term); err != nil {
-		return err
+		return outs, err
 	}
 
 	indexName, remoteName := splitReposSearchTerm(term, true)
@@ -201,13 +201,13 @@ func (s *DefaultService) searchTerm(term string, limit int, authConfigs map[stri
 	s.mu.Unlock()
 
 	if err != nil {
-		return err
+		return outs, err
 	}
 
 	// *TODO: Search multiple indexes.
 	endpoint, err := NewV1Endpoint(index, userAgent, http.Header(headers))
 	if err != nil {
-		return err
+		return outs, err
 	}
 
 	ac := ResolveAuthConfig(authConfigs, index)
@@ -228,7 +228,7 @@ func (s *DefaultService) searchTerm(term string, limit int, authConfigs map[stri
 			if fErr, ok := err.(fallbackError); ok {
 				logrus.Errorf("Cannot use identity token for search, v2 auth not supported: %v", fErr.err)
 			} else {
-				return err
+				return outs, err
 			}
 		} else if foundV2 {
 			// Copy non transport http client features
@@ -244,13 +244,13 @@ func (s *DefaultService) searchTerm(term string, limit int, authConfigs map[stri
 	if client == nil {
 		client = endpoint.client
 		if err := authorizeClient(client, authConfig, endpoint); err != nil {
-			return err
+			return outs, err
 		}
 	}
 
 	r, err := NewSession(client, authConfig, endpoint)
 	if err != nil {
-		return err
+		return outs, err
 	}
 
 	var results *registrytypes.SearchResults
@@ -266,12 +266,12 @@ func (s *DefaultService) searchTerm(term string, limit int, authConfigs map[stri
 		results, err = r.SearchRepositories(remoteName, limit)
 	}
 	if err != nil || results.NumResults < 1 {
-		return err
+		return outs, err
 	}
 
-	newOuts := make([]registrytypes.SearchResultExt, len(*outs)+len(results.Results))
-	for i := range *outs {
-		newOuts[i] = (*outs)[i]
+	newOuts := make([]registrytypes.SearchResultExt, len(outs)+len(results.Results))
+	for i := range outs {
+		newOuts[i] = (outs)[i]
 	}
 	for i, result := range results.Results {
 		item := registrytypes.SearchResultExt{
@@ -289,10 +289,10 @@ func (s *DefaultService) searchTerm(term string, limit int, authConfigs map[stri
 		if newRegistryName != "" {
 			item.RegistryName, item.Name = newRegistryName, newName
 		}
-		newOuts[len(*outs)+i] = item
+		newOuts[len(outs)+i] = item
 	}
-	*outs = newOuts
-	return nil
+	outs = newOuts
+	return outs, nil
 }
 
 // Duplicate entries may occur in result table when omitting index from output because
@@ -341,15 +341,17 @@ func removeSearchDuplicates(data []registrytypes.SearchResultExt) []registrytype
 func (s *DefaultService) Search(ctx context.Context, term string, limit int, authConfigs map[string]types.AuthConfig, userAgent string, headers map[string][]string, noIndex bool) ([]registrytypes.SearchResultExt, error) {
 	results := []registrytypes.SearchResultExt{}
 	cmpFunc := getSearchResultsCmpFunc(!noIndex)
+	var err error
 
 	// helper for concurrent queries
 	searchRoutine := func(term string, c chan<- error) {
-		err := s.searchTerm(term, limit, authConfigs, userAgent, headers, noIndex, &results)
+		results, err = s.searchTerm(term, limit, authConfigs, userAgent, headers, noIndex, results)
 		c <- err
 	}
 
 	if isReposSearchTermFullyQualified(term) {
-		if err := s.searchTerm(term, limit, authConfigs, userAgent, headers, noIndex, &results); err != nil {
+		results, err = s.searchTerm(term, limit, authConfigs, userAgent, headers, noIndex, results)
+		if err != nil {
 			return nil, err
 		}
 	} else if len(DefaultRegistries) < 1 {
