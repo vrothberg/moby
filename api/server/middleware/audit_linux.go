@@ -111,7 +111,7 @@ func getLoginUID(ucred *syscall.Ucred, fd int) (int64, error) {
 		logrus.Errorf("Error reading loginuid: %v", err)
 		return -1, err
 	}
-	loginuidInt, err := strconv.ParseInt(string(loginuid), 10, 0)
+	loginuidInt, err := strconv.ParseInt(string(loginuid), 10, 64)
 	if err != nil {
 		logrus.Errorf("Failed to convert loginuid to int: %v", err)
 		return -1, err
