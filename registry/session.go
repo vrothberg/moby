@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -19,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/containers/image/iolimits"
 	"github.com/docker/distribution/registry/api/errcode"
 	"github.com/docker/docker/api/types"
 	registrytypes "github.com/docker/docker/api/types/registry"
@@ -274,7 +274,7 @@ func (r *Session) GetRemoteImageJSON(imgID, registry string) ([]byte, int64, err
 		}
 	}
 
-	jsonString, err := ioutil.ReadAll(res.Body)
+	jsonString, err := iolimits.ReadAtMost(res.Body, iolimits.MaxManifestBodySize) // 4 MB are enough
 	if err != nil {
 		return nil, -1, fmt.Errorf("Failed to parse downloaded json: %v (%s)", err, jsonString)
 	}
@@ -485,7 +485,7 @@ func (r *Session) GetRepositoryData(name reference.Named) (*RepositoryData, erro
 	if res.StatusCode == 404 {
 		return nil, httputils.NewHTTPRequestError(fmt.Sprintf("HTTP code: %d", res.StatusCode), res)
 	} else if res.StatusCode != 200 {
-		errBody, err := ioutil.ReadAll(res.Body)
+		errBody, err := iolimits.ReadAtMost(res.Body, iolimits.MaxErrorBodySize)
 		if err != nil {
 			logrus.Debugf("Error reading response body: %s", err)
 		}
@@ -542,7 +542,7 @@ func (r *Session) PushImageChecksumRegistry(imgData *ImgData, registry string) e
 		r.client.Jar.SetCookies(req.URL, res.Cookies())
 	}
 	if res.StatusCode != 200 {
-		errBody, err := ioutil.ReadAll(res.Body)
+		errBody, err := iolimits.ReadAtMost(res.Body, iolimits.MaxErrorBodySize)
 		if err != nil {
 			return fmt.Errorf("HTTP code %d while uploading metadata and error when trying to parse response body: %s", res.StatusCode, err)
 		}
@@ -579,7 +579,7 @@ func (r *Session) PushImageJSONRegistry(imgData *ImgData, jsonRaw []byte, regist
 		return httputils.NewHTTPRequestError("HTTP code 401, Docker will not send auth headers over HTTP.", res)
 	}
 	if res.StatusCode != 200 {
-		errBody, err := ioutil.ReadAll(res.Body)
+		errBody, err := iolimits.ReadAtMost(res.Body, iolimits.MaxErrorBodySize)
 		if err != nil {
 			return httputils.NewHTTPRequestError(fmt.Sprintf("HTTP code %d while uploading metadata and error when trying to parse response body: %s", res.StatusCode, err), res)
 		}
@@ -628,7 +628,7 @@ func (r *Session) PushImageLayerRegistry(imgID string, layer io.Reader, registry
 	defer res.Body.Close()
 
 	if res.StatusCode != 200 {
-		errBody, err := ioutil.ReadAll(res.Body)
+		errBody, err := iolimits.ReadAtMost(res.Body, iolimits.MaxErrorBodySize)
 		if err != nil {
 			return "", "", httputils.NewHTTPRequestError(fmt.Sprintf("HTTP code %d while uploading metadata and error when trying to parse response body: %s", res.StatusCode, err), res)
 		}
@@ -718,7 +718,7 @@ func (r *Session) PushImageJSONIndex(remote reference.Named, imgList []*ImgData,
 	var tokens, endpoints []string
 	if !validate {
 		if res.StatusCode != 200 && res.StatusCode != 201 {
-			errBody, err := ioutil.ReadAll(res.Body)
+			errBody, err := iolimits.ReadAtMost(res.Body, iolimits.MaxErrorBodySize)
 			if err != nil {
 				logrus.Debugf("Error reading response body: %s", err)
 			}
@@ -736,7 +736,7 @@ func (r *Session) PushImageJSONIndex(remote reference.Named, imgList []*ImgData,
 		}
 	} else {
 		if res.StatusCode != 204 {
-			errBody, err := ioutil.ReadAll(res.Body)
+			errBody, err := iolimits.ReadAtMost(res.Body, iolimits.MaxErrorBodySize)
 			if err != nil {
 				logrus.Debugf("Error reading response body: %s", err)
 			}

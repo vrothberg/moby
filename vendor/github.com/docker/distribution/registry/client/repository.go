@@ -6,13 +6,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/containers/image/iolimits"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/digest"
@@ -222,7 +222,7 @@ func (t *tags) All(ctx context.Context) ([]string, error) {
 		defer resp.Body.Close()
 
 		if SuccessStatus(resp.StatusCode) {
-			b, err := ioutil.ReadAll(resp.Body)
+			b, err := iolimits.ReadAtMost(resp.Body, iolimits.MaxAllTagsSize)
 			if err != nil {
 				return tags, err
 			}
@@ -257,7 +257,7 @@ func descriptorFromResponse(response *http.Response) (distribution.Descriptor, e
 
 	digestHeader := headers.Get("Docker-Content-Digest")
 	if digestHeader == "" {
-		bytes, err := ioutil.ReadAll(response.Body)
+		bytes, err := iolimits.ReadAtMost(response.Body, iolimits.MaxDistributionDescriptorSize)
 		if err != nil {
 			return distribution.Descriptor{}, err
 		}
@@ -481,7 +481,7 @@ func (ms *manifests) Get(ctx context.Context, dgst digest.Digest, options ...dis
 			}
 		}
 		mt := resp.Header.Get("Content-Type")
-		body, err := ioutil.ReadAll(resp.Body)
+		body, err := iolimits.ReadAtMost(resp.Body, iolimits.MaxManifestBodySize)
 
 		if err != nil {
 			return nil, err
@@ -623,14 +623,15 @@ func (bs *blobs) Stat(ctx context.Context, dgst digest.Digest) (distribution.Des
 
 }
 
-func (bs *blobs) Get(ctx context.Context, dgst digest.Digest) ([]byte, error) {
+func (bs *blobs) Get(ctx context.Context, dgst digest.Digest) (b []byte, e error) {
 	reader, err := bs.Open(ctx, dgst)
 	if err != nil {
 		return nil, err
 	}
 	defer reader.Close()
 
-	return ioutil.ReadAll(reader)
+	// That's only used for configs.
+	return iolimits.ReadAtMost(reader, iolimits.MaxConfigBodySize)
 }
 
 func (bs *blobs) Open(ctx context.Context, dgst digest.Digest) (distribution.ReadSeekCloser, error) {

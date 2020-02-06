@@ -4,12 +4,12 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/containers/image/iolimits"
 	"github.com/docker/distribution/registry/client/transport"
 	registrytypes "github.com/docker/docker/api/types/registry"
 )
@@ -164,7 +164,7 @@ func (e *V1Endpoint) Ping() (PingResult, error) {
 
 	defer resp.Body.Close()
 
-	jsonString, err := ioutil.ReadAll(resp.Body)
+	jsonString, err := iolimits.ReadAtMost(resp.Body, 1 << 20) // 1 MiB is sufficiently enough
 	if err != nil {
 		return PingResult{Standalone: false}, fmt.Errorf("error while reading the http response: %s", err)
 	}

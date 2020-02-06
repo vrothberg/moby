@@ -2,13 +2,13 @@ package registry
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/containers/image/iolimits"
 	"github.com/docker/distribution/registry/client/auth"
 	"github.com/docker/distribution/registry/client/auth/challenge"
 	"github.com/docker/distribution/registry/client/transport"
@@ -51,7 +51,7 @@ func loginV1(authConfig *types.AuthConfig, apiEndpoint APIEndpoint, userAgent st
 		}
 	}
 	defer resp.Body.Close()
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := iolimits.ReadAtMost(resp.Body, iolimits.MaxErrorBodySize)
 	if err != nil {
 		return "", "", err
 	}

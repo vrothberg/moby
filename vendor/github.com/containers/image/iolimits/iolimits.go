@@ -41,6 +41,13 @@ const (
 	// MaxTarFileManifestSize is the maximum allowed size of a (docker save)-like manifest (which may contain multiple images)
 	// The limit of 1 MB is considered to be greatly sufficient.
 	MaxTarFileManifestSize = megaByte
+
+	// SPECIAL TYPES FOR DOCKER
+
+	MaxDistributionDescriptorSize = 4 * megaByte
+
+	MaxAllTagsSize = megaByte
+
 )
 
 // ReadAtMost reads from reader and errors out if the specified limit (in bytes) is exceeded.
