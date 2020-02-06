@@ -2,8 +2,8 @@ package image
 
 import (
 	"encoding/json"
-	"io/ioutil"
 
+	"github.com/containers/image/iolimits"
 	"github.com/containers/image/manifest"
 	"github.com/containers/image/types"
 	"github.com/opencontainers/go-digest"
@@ -68,7 +68,7 @@ func (m *manifestOCI1) ConfigBlob() ([]byte, error) {
 			return nil, err
 		}
 		defer stream.Close()
-		blob, err := ioutil.ReadAll(stream)
+		blob, err := iolimits.ReadAtMost(stream, iolimits.MaxConfigBodySize)
 		if err != nil {
 			return nil, err
 		}
