@@ -5,9 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 
+	"github.com/containers/image/iolimits"
 	"github.com/docker/distribution/registry/api/errcode"
 	"github.com/docker/distribution/registry/client/auth/challenge"
 )
@@ -40,7 +40,7 @@ func (e *UnexpectedHTTPResponseError) Error() string {
 
 func parseHTTPErrorResponse(statusCode int, r io.Reader) error {
 	var errors errcode.Errors
-	body, err := ioutil.ReadAll(r)
+	body, err := iolimits.ReadAtMost(r, iolimits.MaxErrorBodySize)
 	if err != nil {
 		return err
 	}
