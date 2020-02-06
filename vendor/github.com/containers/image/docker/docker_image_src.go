@@ -12,6 +12,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/containers/image/docker/reference"
+	"github.com/containers/image/iolimits"
 	"github.com/containers/image/manifest"
 	"github.com/containers/image/types"
 	"github.com/docker/distribution/registry/client"
@@ -51,13 +52,9 @@ func newImageSource(ctx *types.SystemContext, ref dockerReference, requestedMani
 	if !acceptableRequestedMIMEs {
 		requestedManifestMIMETypes = manifest.DefaultRequestedManifestMIMETypes
 	}
-	return &dockerImageSource{
-		ref: ref,
-		requestedManifestMIMETypes: requestedManifestMIMETypes,
-		c: c,
-	}, nil
+	return                                               &dockerImageSource{ref: ref, requestedManifestMIMETypes: requestedManifestMIMETypes, c: c}, nil
 }
-
+                                                  
 // Reference returns the reference used to set up this source, _as specified by the user_
 // (not as the image itself, or its underlying storage, claims).  This can be used e.g. to determine which public keys are trusted for this image.
 func (s *dockerImageSource) Reference() types.ImageReference {
@@ -104,7 +101,7 @@ func (s *dockerImageSource) fetchManifest(tagOrDigest string) ([]byte, string, e
 	if res.StatusCode != http.StatusOK {
 		return nil, "", client.HandleErrorResponse(res)
 	}
-	manblob, err := ioutil.ReadAll(res.Body)
+	manblob, err := iolimits.ReadAtMost(res.Body, iolimits.MaxManifestBodySize)
 	if err != nil {
 		return nil, "", err
 	}
@@ -264,7 +261,7 @@ func (s *dockerImageSource) getOneSignature(url *url.URL) (signature []byte, mis
 		} else if res.StatusCode != http.StatusOK {
 			return nil, false, errors.Errorf("Error reading signature from %s: status %d", url.String(), res.StatusCode)
 		}
-		sig, err := ioutil.ReadAll(res.Body)
+		sig, err := iolimits.ReadAtMost(res.Body, iolimits.MaxSignatureBodySize)
 		if err != nil {
 			return nil, false, err
 		}
@@ -321,7 +318,7 @@ func deleteImage(ctx *types.SystemContext, ref dockerReference) error {
 		return err
 	}
 	defer get.Body.Close()
-	manifestBody, err := ioutil.ReadAll(get.Body)
+	manifestBody, err := iolimits.ReadAtMost(get.Body, iolimits.MaxManifestBodySize)
 	if err != nil {
 		return err
 	}
@@ -344,7 +341,7 @@ func deleteImage(ctx *types.SystemContext, ref dockerReference) error {
 	}
 	defer delete.Body.Close()
 
-	body, err := ioutil.ReadAll(delete.Body)
+	body, err := iolimits.ReadAtMost(delete.Body, iolimits.MaxErrorBodySize)
 	if err != nil {
 		return err
 	}
