@@ -16,6 +16,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/containers/image/docker/reference"
+	"github.com/containers/image/iolimits"
 	"github.com/containers/image/types"
 	"github.com/containers/storage/pkg/homedir"
 	"github.com/docker/distribution/registry/client"
@@ -349,7 +350,7 @@ func (c *dockerClient) getBearerToken(realm, service, scope string) (*bearerToke
 	default:
 		return nil, errors.Errorf("unexpected http code: %d, URL: %s", res.StatusCode, authReq.URL)
 	}
-	tokenBlob, err := ioutil.ReadAll(res.Body)
+	tokenBlob, err := iolimits.ReadAtMost(res.Body, iolimits.MaxAuthTokenBodySize)
 	if err != nil {
 		return nil, err
 	}
@@ -492,7 +493,7 @@ func (c *dockerClient) getExtensionsSignatures(ref dockerReference, manifestDige
 	if res.StatusCode != http.StatusOK {
 		return nil, client.HandleErrorResponse(res)
 	}
-	body, err := ioutil.ReadAll(res.Body)
+	body, err := iolimits.ReadAtMost(res.Body, iolimits.MaxSignatureListBodySize)
 	if err != nil {
 		return nil, err
 	}
