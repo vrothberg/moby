@@ -113,6 +113,12 @@ func continueOnError(err error) bool {
 	case ImageConfigPullError:
 		return false
 	case error:
+		if strings.Contains(err.Error(), "exceeded maximum allowed size of ") {
+			// This error comes from c/image and protects against CVE-2020-1702.
+			// We should not continue on this error and let it bubble up to the
+			// client.
+			return false
+		}
 		return !strings.Contains(err.Error(), strings.ToLower(syscall.ENOSPC.Error()))
 	}
 	// let's be nice and fallback if the error is a completely
